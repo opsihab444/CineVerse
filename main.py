@@ -13,6 +13,7 @@ import moviebox_api
 from moviebox_api import Homepage, MovieDetails, MovieAuto, Session, resolve_media_file_to_be_downloaded, Search
 from moviebox_api.download import DownloadableMovieFilesDetail, DownloadableTVSeriesFilesDetail
 from moviebox_api.models import SearchResultsItem
+from moviebox_api.constants import ITEM_DETAILS_PATH
 import os
 import asyncio
 
@@ -430,12 +431,13 @@ def make_secure_url(token, title, quality="HD"):
     return f"/v/{token}/{safe_title}.{q_str}.mp4?token=exp={exp}&sig={sig}"
     
 @app.get("/api/details/{title:path}", tags=["Movies"], summary="Get Movie Details")
-async def get_details(request: Request, title: str, include_stream: bool = True):
+async def get_details(request: Request, title: str, include_stream: bool = True, id: str = None, slug: str = None):
     """
     Get detailed information about a movie by its title.
     
-    - **title**: The title of the movie (or ID if supported).
-    - **include_stream**: If true, attempts to resolve streaming URLs immediately.
+    - **title**: The title of the movie.
+    - **id**: (Optional) Movie ID (Fastest way)
+    - **slug**: (Optional) Movie URL slug (Fastest way)
     """
     
     # Check cache first
@@ -450,8 +452,16 @@ async def get_details(request: Request, title: str, include_stream: bool = True)
     movie = None
     
     try:
-        # Search for the movie first
-        movie = await search_movie_by_title(title, session)
+        if id and slug:
+            print(f"[DETAILS] ⚡ Fast fetching with ID: {id}")
+            # Construct URL manually to skip search
+            page_url = f"{ITEM_DETAILS_PATH}/{slug}?id={id}"
+            movie = MovieDetails(page_url, session=session)
+        else:
+            # Search for the movie first
+            print(f"[DETAILS] 🐢 Searching by title: {title}")
+            movie = await search_movie_by_title(title, session)
+            
         if not movie:
             return {"error": f"Movie '{title}' not found"}
         
@@ -796,21 +806,30 @@ async def get_tv_details(request: Request, title: str):
         if hasattr(session, 'aclose'): await session.aclose()
 
 @app.get("/api/stream_url/{title:path}", tags=["Movies"], summary="Get Movie Stream")
-async def get_stream_url(request: Request, title: str, quality: str = "720P"):
+async def get_stream_url(request: Request, title: str, quality: str = "720P", id: str = None):
     """
     Resolve a secure streaming URL for a specific movie.
+    - If **id** is provided, skips search and fetches directly (Faster).
     """
     
     # Force a high-quality BD IP for stream link generation to ensure speed/compatibility
     client_ip = "103.205.132.10"
     session = get_session(client_ip)
     try:
-        print(f"[STREAM] Searching for stream: {title}")
+        print(f"[STREAM] Request for: {title} (ID: {id})")
         
-        # 1. Search for the movie
-        movie = await search_movie_by_title(title, session)
-        if not movie:
-            return {"error": f"Movie '{title}' not found"}
+        movie = None
+        if id and id != "null" and id != "undefined":
+            # FAST PATH: Direct fetch by ID
+            print(f"[STREAM] ⚡ Using ID for fast fetch: {id}")
+            movie = MovieDetails(id, session=session)
+        else:
+            # SLOW PATH: Search by title
+            print(f"[STREAM] 🐢 Searching by title: {title}")
+            # 1. Search for the movie
+            movie = await search_movie_by_title(title, session)
+            if not movie:
+                return {"error": f"Movie '{title}' not found"}
         
         print(f"[STREAM] Found: {movie.title}")
         

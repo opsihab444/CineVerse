@@ -2000,11 +2000,11 @@
             if (year) year.innerText = item.year || "2024";
 
             btnPlay.onclick = () => {
-                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image);
+                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image, item.subjectId, item.detailPath);
             };
 
             btnInfo.onclick = () => {
-                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image);
+                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image, item.subjectId, item.detailPath);
             };
         };
     }
@@ -2195,7 +2195,7 @@
             const card = document.createElement('div');
             // Optimized Card: removed blur, added will-change, added marker class
             card.className = 'movie-card-item min-w-[160px] md:min-w-[220px] aspect-[2/3] relative rounded-md overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.02] hover:z-10 bg-zinc-800 will-change-transform';
-            card.onclick = () => movie.isMovie === false ? openTVModal(movie.title, movie.image) : openMovieModal(movie.title, movie.image);
+            card.onclick = () => movie.isMovie === false ? openTVModal(movie.title, movie.image) : openMovieModal(movie.title, movie.image, movie.subjectId, movie.detailPath);
 
             // Attach data directly to DOM element for delegation (Zero overhead compared to closures)
             card._movieData = movie;
@@ -2389,7 +2389,7 @@
         if (!activeHoverData) return;
         hideHoverCard();
         if (activeHoverData.isMovie) {
-            openMovieModal(activeHoverData.title, activeHoverData.image);
+            openMovieModal(activeHoverData.title, activeHoverData.image, activeHoverData.subjectId, activeHoverData.detailPath);
         } else {
             openTVModal(activeHoverData.title, activeHoverData.image);
         }
@@ -2855,7 +2855,7 @@
     }
 
     // Updated openItemFromSearch to fetch fresh details including qualities
-    async function openMovieModal(title, image) {
+    async function openMovieModal(title, image, id = null, slug = null) {
         const modal = document.getElementById('movieModal');
         const modalBody = document.getElementById('modalBody');
         modal.classList.add('active');
@@ -2955,7 +2955,12 @@
 
         try {
             // Note: /api/details now returns 'qualities' if stream is included
-            const response = await fetch(`/api/details/${encodeURIComponent(title)}?include_stream=true`);
+            // Use Fast Path if ID available
+            let url = `/api/details/${encodeURIComponent(title)}?include_stream=true`;
+            if (id && slug) {
+                url += `&id=${id}&slug=${encodeURIComponent(slug)}`;
+            }
+            const response = await fetch(url);
             const details = await response.json();
 
             if (details.error) {
@@ -2982,7 +2987,7 @@
                         <h3 class="recommended-title mb-4 font-bold text-xl text-white">More Like This</h3>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             ${recommended.map(m => `
-                                <div class="bg-[#2f2f2f] rounded overflow-hidden cursor-pointer hover:bg-[#3f3f3f] transition group" onclick="openMovieModal('${m.title.replace(/'/g, "\\'")}', '${m.image}')">
+                                <div class="bg-[#2f2f2f] rounded overflow-hidden cursor-pointer hover:bg-[#3f3f3f] transition group" onclick="openMovieModal('${m.title.replace(/'/g, "\\'")}', '${m.image}', '${m.subjectId}', '${m.detailPath}')">
                                     <div class="aspect-video bg-gray-800 relative overflow-hidden">
                                         <img src="${m.image}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
                                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
