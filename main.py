@@ -1111,8 +1111,8 @@ async def stream_engine(url: str, request: Request):
         headers["Range"] = range_header
 
     try:
-        # Stream request
-        req = proxy_client.build_request("GET", url, headers=headers)
+        # Stream request (Timeout disabled for long streams)
+        req = proxy_client.build_request("GET", url, headers=headers, timeout=None)
         response = await proxy_client.send(req, stream=True, follow_redirects=True)
         
         # Build response headers
@@ -1127,8 +1127,8 @@ async def stream_engine(url: str, request: Request):
         
         async def stream_video():
             try:
-                # Optimized chunk size: 512KB
-                async for chunk in response.aiter_bytes(chunk_size=512 * 1024):
+                # Optimized chunk size: 1MB (Better for high latency links like Render)
+                async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
                     yield chunk
             except Exception as stream_err:
                 print(f"[STREAM ERROR] {stream_err}")
