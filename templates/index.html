@@ -2000,11 +2000,11 @@
             if (year) year.innerText = item.year || "2024";
 
             btnPlay.onclick = () => {
-                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image, item.subjectId, item.detailPath);
+                item.isMovie === false ? openTVModal(item.title, item.image, item.subjectId, item.detailPath) : openMovieModal(item.title, item.image, item.subjectId, item.detailPath);
             };
 
             btnInfo.onclick = () => {
-                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image, item.subjectId, item.detailPath);
+                item.isMovie === false ? openTVModal(item.title, item.image, item.subjectId, item.detailPath) : openMovieModal(item.title, item.image, item.subjectId, item.detailPath);
             };
         };
     }
@@ -2195,7 +2195,7 @@
             const card = document.createElement('div');
             // Optimized Card: removed blur, added will-change, added marker class
             card.className = 'movie-card-item min-w-[160px] md:min-w-[220px] aspect-[2/3] relative rounded-md overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.02] hover:z-10 bg-zinc-800 will-change-transform';
-            card.onclick = () => movie.isMovie === false ? openTVModal(movie.title, movie.image) : openMovieModal(movie.title, movie.image, movie.subjectId, movie.detailPath);
+            card.onclick = () => movie.isMovie === false ? openTVModal(movie.title, movie.image, movie.subjectId, movie.detailPath) : openMovieModal(movie.title, movie.image, movie.subjectId, movie.detailPath);
 
             // Attach data directly to DOM element for delegation (Zero overhead compared to closures)
             card._movieData = movie;
@@ -2391,7 +2391,7 @@
         if (activeHoverData.isMovie) {
             openMovieModal(activeHoverData.title, activeHoverData.image, activeHoverData.subjectId, activeHoverData.detailPath);
         } else {
-            openTVModal(activeHoverData.title, activeHoverData.image);
+            openTVModal(activeHoverData.title, activeHoverData.image, activeHoverData.subjectId, activeHoverData.detailPath);
         }
     }
 
@@ -2411,7 +2411,7 @@
 
 
 
-    async function openTVModal(title, imageUrl) {
+    async function openTVModal(title, imageUrl, id = null, slug = null) {
         const modal = document.getElementById('movieModal');
         const modalBody = document.getElementById('modalBody');
         modal.classList.add('active');
@@ -2512,7 +2512,11 @@
             currentSeason = 1;
 
             // Start prefetching first episode stream URL NOW (don't wait)
-            const streamUrlPromise = fetch(`/api/tv_stream_url/${encodeURIComponent(title)}/1/1`);
+            let streamApiUrl = `/api/tv_stream_url/${encodeURIComponent(title)}/1/1`;
+            if (id && slug) {
+                streamApiUrl += `?id=${id}&slug=${encodeURIComponent(slug)}`;
+            }
+            const streamUrlPromise = fetch(streamApiUrl);
             currentTVData.prefetchedStreamUrl = streamUrlPromise;
 
             const seasonTabs = details.seasons.map((s, i) =>
@@ -2533,7 +2537,7 @@
                 .slice(0, 6);
 
             const forYouHTML = forYouItems.map(m => `
-                <div class="for-you-card" onclick="openTVModal('${m.title.replace(/'/g, "\\'")}', '${m.image}')">
+                <div class="for-you-card" onclick="openTVModal('${m.title.replace(/'/g, "\\'")}', '${m.image}', '${m.subjectId}', '${m.detailPath}')">
                     <img src="${m.image}" alt="${m.title}">
                     <span class="lang-badge">Hindi</span>
                 </div>
@@ -2794,6 +2798,13 @@
             `).join('');
     }
 
+    function buildEpisodePillsHTML(episodes) {
+        return `<button class="episode-pill" onclick="selectEpisodePill('all', this)">All</button>` +
+            episodes.map((ep, idx) =>
+                `<button class="episode-pill" onclick="selectEpisodePill(${ep.episodeNumber}, this)">${ep.episodeNumber.toString().padStart(2, '0')}</button>`
+            ).join('');
+    }
+
     function changeSeason(index, btnElement) {
         // Update Tabs UI
         const container = document.getElementById('seasonTabsContainer');
@@ -2808,15 +2819,29 @@
             }
         }
 
-        // Show skeleton first
+        // Mobile Dropdown Update
+        const mobileSelect = document.getElementById('mobileSeasonSelect');
+        if (mobileSelect) {
+            mobileSelect.value = currentTVData.seasons[index].seasonNumber;
+        }
+
+        // Show skeleton first (Desktop & Mobile)
         const list = document.getElementById('episodesList');
-        list.innerHTML = getEpisodesSkeletonHTML();
+        const mobilePills = document.getElementById('mobileEpisodePills');
+
+        if (list) list.innerHTML = getEpisodesSkeletonHTML();
+        if (mobilePills) {
+            // Mobile Skeleton (Pulse pills)
+            mobilePills.innerHTML = Array(10).fill(0).map(() => `<div class="w-10 h-10 rounded bg-gray-800 animate-pulse"></div>`).join('');
+        }
 
         // Simulate small delay for premium feel
         setTimeout(() => {
             const season = currentTVData.seasons[index];
             currentSeason = season.seasonNumber;
-            list.innerHTML = buildEpisodesHTML(season.episodes);
+
+            if (list) list.innerHTML = buildEpisodesHTML(season.episodes);
+            if (mobilePills) mobilePills.innerHTML = buildEpisodePillsHTML(season.episodes);
         }, 500);
     }
 

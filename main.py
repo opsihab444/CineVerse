@@ -923,50 +923,61 @@ async def get_stream_url(request: Request, title: str, quality: str = "720P", id
         if hasattr(session, 'aclose'): await session.aclose()
 
 @app.get("/api/tv_stream_url/{title:path}/{season}/{episode}", tags=["TV Series"], summary="Get TV Series Stream")
-async def get_tv_stream_url(request: Request, title: str, season: int, episode: int, quality: str = "720P"):
+async def get_tv_stream_url(request: Request, title: str, season: int, episode: int, quality: str = "720P", id: str = None, slug: str = None):
     """
     Resolve a secure streaming URL for a specific TV episode.
+    - If **id/slug** is provided, skips search (Faster & More Reliable).
     """
     # Force a high-quality BD IP for stream link generation to ensure speed/compatibility
     client_ip = "103.205.132.10"
     session = get_session(client_ip)
     try:
-        print(f"[TV STREAM] Searching for: {title} S{season}E{episode}")
+        print(f"[TV STREAM] Request for: {title} S{season}E{episode} (ID: {id})")
         
-        # 1. Search (using moviebox search logic for generic content)
-        s = Search(session=session, query=title)
-        results = await s.get_content_model()
-        if not results.items:
-            # Try appending season info
-            s = Search(session=session, query=f"{title} S{season}")
+        tv_details_downloader = None
+
+        if id and slug:
+             # Fast Path: Direct fetch by ID
+             print(f"[TV STREAM] ⚡ Using ID for fast fetch: {id}")
+             # Construct URL manually
+             page_url = f"{ITEM_DETAILS_PATH}/{slug}?id={id}"
+             tv_details_downloader = DownloadableTVSeriesFilesDetail(session, page_url)
+        else:
+            # Slow Path: Search
+            print(f"[TV STREAM] 🐢 Searching by title: {title}")
+            # 1. Search (using moviebox search logic for generic content)
+            s = Search(session=session, query=title)
             results = await s.get_content_model()
+            if not results.items:
+                # Try appending season info
+                s = Search(session=session, query=f"{title} S{season}")
+                results = await s.get_content_model()
+                
+            if not results.items:
+                return {"error": f"Series '{title}' not found"}
+
+            item = results.items[0]
+            print(f"[TV STREAM] Found series: {item.title}")
+            tv_details_downloader = DownloadableTVSeriesFilesDetail(session, item)
             
-        if not results.items:
-            return {"error": f"Series '{title}' not found"}
-
-        item = results.items[0]
-        print(f"[TV STREAM] Found series: {item.title}")
-
-        # 2. Get downloadable files metadata for TV Series
-        downloadable_files = DownloadableTVSeriesFilesDetail(session, item)
-        
         # 3. Get specific season/episode model
-        try:
-            downloadable_files_detail = await downloadable_files.get_content_model(
-                season=season,
-                episode=episode
-            )
-        except Exception as e:
-            return {"error": f"Could not fetch episode details: {str(e)}"}
+        print(f"[TV STREAM] Fetching details for S{season}E{episode}...")
+        downloadable_files_detail = await tv_details_downloader.get_content_model(season=season, episode=episode)
             
         if not downloadable_files_detail:
-             return {"error": f"Episode S{season}E{episode} not found."}
-             
-        print(f"[TV STREAM] Got episode metadata")
+                return {"error": f"Episode S{season}E{episode} not found."}
 
         # Extract all available qualities
         available_qualities = []
         if hasattr(downloadable_files_detail, 'downloads'):
+            import uuid
+            # make_secure_url is defined globally in this file
+            
+            # Use a temporary map for this request scope if needed, or global
+            # For simplicity, we can reuse the make_secure_url logic if we import it or replicate it.
+            # But wait, make_secure_url relies on _stream_map global variable.
+            # We need to make sure we use the same one.
+            
             for d in downloadable_files_detail.downloads:
                 res = getattr(d, 'resolution', None)
                 size = getattr(d, 'size', None)
@@ -979,7 +990,7 @@ async def get_tv_stream_url(request: Request, title: str, season: int, episode: 
                     
                     # OTT Style
                     q_label = f"{res}p" if res else "720p"
-                    secure_url = make_secure_url(token, f"{item.title}.S{season}E{episode}", q_label)
+                    secure_url = make_secure_url(token, f"{title}.S{season}E{episode}", q_label)
                     
                     available_qualities.append({
                         "label": q_label,
@@ -994,12 +1005,9 @@ async def get_tv_stream_url(request: Request, title: str, season: int, episode: 
             except: return 0
         available_qualities.sort(key=get_res_val, reverse=True)
 
-        # 4. Resolve URL
-        stream_url = ""
-        filename = f"{title}_S{season}E{episode}.mp4"
-        
+        stream_link = ""
         if available_qualities:
-             # Default to 720p or Best
+             # Default to 720p or requested quality
              selected = None
              for q_item in available_qualities:
                  if str(q_item['resolution']) in quality or q_item['label'] == quality:
@@ -1007,37 +1015,24 @@ async def get_tv_stream_url(request: Request, title: str, season: int, episode: 
                      break
              if not selected:
                  selected = available_qualities[0]
-             stream_url = selected['url']
-
+             stream_link = selected['url']
         else:
-             # Fallback
-             try:
-                target_media_file = resolve_media_file_to_be_downloaded(quality, downloadable_files_detail)
-                real_url = str(target_media_file.url)
-                token = str(uuid.uuid4().hex)
-                _stream_map[token] = real_url
-                
-                stream_url = make_secure_url(token, f"{item.title}.S{season}E{episode}", "Auto")
-                filename = f"{item.title} S{season}E{episode}.mp4"
-             except Exception as e:
-                 return {"error": f"No playable sources: {e}"}
+             # Fallback to resolve_media_file_to_be_downloaded if imports allow
+             # But usually downloads list is populated. 
+             # Let's return error if empty
+             return {"error": "No playable streams found for this episode."}
 
-        return {
-            "url": stream_url,
-            "filename": filename,
-            "title": f"{item.title} S{season}E{episode}",
-            "referer": "https://fmoviesunblocked.net/",
-            "qualities": available_qualities
-        }
-
+        return {"url": stream_link, "quality": quality, "qualities": available_qualities}
+            
     except Exception as e:
         print(f"[TV STREAM] Error: {e}")
         import traceback
         traceback.print_exc()
-        return {"error": str(e)}
+        return {"error": f"No playable sources: {str(e)}"}
     finally:
-        if hasattr(session, 'aclose'): 
-            await session.aclose()
+        if hasattr(session, 'aclose'): await session.aclose()
+
+
 
 
 @app.get("/search", response_class=HTMLResponse, include_in_schema=False)
