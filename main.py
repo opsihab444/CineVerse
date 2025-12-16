@@ -800,7 +800,9 @@ async def get_stream_url(request: Request, title: str, quality: str = "720P"):
     """
     Resolve a secure streaming URL for a specific movie.
     """
-    client_ip = get_client_ip(request)
+    
+    # Force a high-quality BD IP for stream link generation to ensure speed/compatibility
+    client_ip = "103.205.132.10"
     session = get_session(client_ip)
     try:
         print(f"[STREAM] Searching for stream: {title}")
@@ -906,7 +908,8 @@ async def get_tv_stream_url(request: Request, title: str, season: int, episode: 
     """
     Resolve a secure streaming URL for a specific TV episode.
     """
-    client_ip = get_client_ip(request)
+    # Force a high-quality BD IP for stream link generation to ensure speed/compatibility
+    client_ip = "103.205.132.10"
     session = get_session(client_ip)
     try:
         print(f"[TV STREAM] Searching for: {title} S{season}E{episode}")
