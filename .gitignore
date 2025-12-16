@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Debug files
+debug_*.py
+debug_*.txt
+*_dump.json
+*_dump.txt
+test_*.py
+inspect_*.py
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - MovieBox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        netflix: {
+                            red: '#E50914',
+                            black: '#141414',
+                            dark: '#181818',
+                            gray: '#2F2F2F'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+        /* Reuse styles from index.html */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .modal-content {
+            background: #181818;
+            border-radius: 12px;
+            max-width: 1000px;
+            width: 95%;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+            margin: auto;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-banner {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .modal-banner-gradient {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(to top, #181818, transparent);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .modal-info {
+            padding: 30px;
+        }
+
+        .modal-title {
+            font-size: 2.5em;
+            margin: 0 0 20px 0;
+            font-weight: bold;
+        }
+
+        .modal-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #46d369;
+            font-size: 16px;
+        }
+
+        .btn-watch {
+            background: white;
+            color: black;
+            border: none;
+            padding: 12px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-watch:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Netflix-style buffering spinner */
+        .netflix-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid transparent;
+            border-top-color: #e50914;
+            border-radius: 50%;
+            animation: netflix-spin 1s linear infinite;
+        }
+
+        @keyframes netflix-spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Branding Animation Styles */
+        .branding-logo-container {
+            width: 120px;
+            height: 120px;
+            filter: drop-shadow(0 0 20px rgba(229, 9, 20, 0.6));
+            animation: brand-scale 2.5s ease-in-out forwards;
+        }
+
+        .branding-logo path {
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+            animation: draw-m 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes draw-m {
+            0% {
+                stroke-dashoffset: 200;
+            }
+
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes brand-scale {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            20% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            80% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Range Slider Custom Styling */
+        input[type=range].custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #E50914;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        input[type=range].custom-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #4b5563;
+            border-radius: 2px;
+        }
+
+        /* Episodes List Styling */
+        .episodes-section {
+            padding: 30px;
+            border-top: 1px solid #333;
+        }
+
+        .episode-card {
+            display: flex;
+            gap: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .episode-card:hover {
+            background: #3a3a3a;
+        }
+
+        .episode-thumbnail {
+            width: 140px;
+            height: 80px;
+            object-fit: cover;
+        }
+
+        .episode-info {
+            padding: 10px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .episode-play-icon {
+            display: flex;
+            align-items: center;
+            padding-right: 20px;
+            color: #e50914;
+            opacity: 0;
+        }
+
+        .episode-card:hover .episode-play-icon {
+            opacity: 1;
+        }
+
+        /* Search Styles */
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #ccc;
+            color: white;
+            padding: 5px 10px;
+            padding-left: 35px;
+            font-size: 14px;
+            width: 0;
+            opacity: 0;
+            transition: width 0.3s ease, opacity 0.3s ease;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .search-box.active .search-input {
+            width: 250px;
+            opacity: 1;
+            cursor: text;
+        }
+
+        .search-icon-btn {
+            position: absolute;
+            left: 0;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .search-results-dropdown {
+            position: absolute;
+            top: 40px;
+            right: 0;
+            width: 300px;
+            background: #181818;
+            border: 1px solid #333;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-bottom: 1px solid #2f2f2f;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #2f2f2f;
+        }
+
+        .search-result-item img {
+            width: 50px;
+            height: 75px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body class="bg-netflix-black text-white font-sans antialiased">
+    <!-- Header -->
+    <header class="fixed top-0 w-full z-50 transition-all duration-300 bg-black p-5 pl-[4%]">
+        <a href="/" class="text-netflix-red text-3xl font-bold font-sans drop-shadow-md">MOVIEBOX</a>
+
+        <div class="absolute right-[4%] top-5 flex items-center gap-4">
+            <div class="search-box" id="searchBox">
+                <button class="search-icon-btn" onclick="toggleSearch()">
+                    <span class="material-symbols-outlined text-2xl">search</span>
+                </button>
+                <input type="text" id="searchInput" class="search-input" placeholder="Titles, people, genres">
+                <div id="searchResults" class="search-results-dropdown"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div id="app" class="pt-24 min-h-screen px-[4%]">
+        <h1 class="text-2xl font-bold mb-6 mt-4">Search Results for "<span id="queryDisplay"
+                class="text-netflix-red">...</span>"</h1>
+        <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-20">
+            <div class="col-span-full text-center text-gray-500 py-10">Searching...</div>
+        </div>
+    </div>
+
+    <!-- Movie Details Modal -->
+    <div class="modal-overlay" id="movieModal">
+        <div class="modal-content text-white">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div id="modalBody">
+                <div class="flex items-center justify-center h-96">
+                    <div class="netflix-spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Player -->
+    <div id="playerModal"
+        class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center font-sans overflow-hidden group/player">
+
+        <div id="playerTopBar"
+            class="absolute top-0 left-0 right-0 p-6 z-[200] flex justify-between items-center bg-gradient-to-b from-black/90 to-transparent opacity-0 [.show-controls_&]:opacity-100 transition-opacity duration-300">
+            <div class="flex items-center gap-6">
+                <button onclick="closePlayer()"
+                    class="text-white/80 hover:text-white transition-transform hover:scale-110">
+                    <span class="material-symbols-outlined text-4xl shadow-lg">arrow_back</span>
+                </button>
+                <div id="playerTitle" class="text-lg md:text-xl font-bold text-white drop-shadow-md tracking-wide">
+                </div>
+            </div>
+            <div>
+                <span
+                    class="material-symbols-outlined text-3xl text-white/50 hover:text-white cursor-pointer transition">flag</span>
+            </div>
+        </div>
+
+        <div id="brandingOverlay"
+            class="hidden absolute inset-0 z-[2200] bg-black flex items-center justify-center pointer-events-none">
+            <div class="branding-logo-container">
+                <svg class="w-full h-full branding-logo" viewBox="0 0 100 100" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 80V20L50 60L80 20V80" stroke="#E50914" stroke-width="8" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+
+        <div id="playerLoading" class="absolute z-50 flex flex-col items-center pointer-events-none hidden">
+            <div class="netflix-spinner mb-4"></div>
+            <div class="text-white font-medium tracking-widest text-sm animate-pulse">LOADING</div>
+        </div>
+
+        <div id="bufferingSpinner" class="hidden absolute z-40 pointer-events-none">
+            <div class="netflix-spinner"></div>
+        </div>
+
+        <div id="videoContainer"
+            class="relative w-full h-full flex items-center justify-center bg-black transition-opacity duration-500 opacity-0">
+            <video id="videoPlayer" class="w-full h-full object-contain focus:outline-none"></video>
+
+            <div class="absolute inset-0 z-10" onclick="togglePlayPause()"></div>
+
+            <div id="controlsOverlay"
+                class="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-32 bg-gradient-to-t from-black/90 via-black/60 to-transparent z-[100] opacity-0 [.show-controls_&]:opacity-100 transition-opacity duration-300 flex flex-col justify-end pointer-events-none">
+
+                <div class="pointer-events-auto w-full mb-4 group/timeline relative">
+                    <div id="timeTooltip"
+                        class="absolute bottom-6 -translate-x-1/2 bg-zinc-800 text-white text-xs font-bold py-1 px-2 rounded shadow-lg opacity-0 transition-opacity pointer-events-none z-20">
+                        00:00</div>
+
+                    <div id="progressContainer"
+                        class="relative w-full h-1.5 bg-gray-600/50 rounded-sm cursor-pointer flex items-center hover:h-2.5 transition-all duration-200">
+                        <div id="progressBar" class="h-full bg-netflix-red rounded-l-sm relative" style="width: 0%">
+                            <div
+                                class="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-netflix-red rounded-full scale-0 group-hover/timeline:scale-100 transition-transform shadow-md">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pointer-events-auto flex items-center justify-between">
+                    <div class="flex items-center gap-6">
+                        <button id="playPauseBtn" onclick="togglePlayPause()"
+                            class="text-white hover:text-netflix-red transition-colors transform active:scale-95">
+                            <span class="material-symbols-outlined text-[40px]">play_arrow</span>
+                        </button>
+
+                        <button onclick="skipTime(-10)"
+                            class="text-white/80 hover:text-white transition group relative flex flex-col items-center px-2">
+                            <span class="material-symbols-outlined text-[32px]">replay_10</span>
+                        </button>
+
+                        <button onclick="skipTime(10)"
+                            class="text-white/80 hover:text-white transition group relative flex flex-col items-center px-2">
+                            <span class="material-symbols-outlined text-[32px]">forward_10</span>
+                        </button>
+
+                        <div class="flex items-center gap-2 group/volume ml-2">
+                            <button id="muteBtn" onclick="toggleMute()"
+                                class="text-white/80 hover:text-white transition">
+                                <span class="material-symbols-outlined text-[32px]">volume_up</span>
+                            </button>
+                            <input type="range" id="volumeSlider" min="0" max="100" value="100"
+                                onchange="changeVolume(this.value)"
+                                class="w-0 overflow-hidden group-hover/volume:w-24 transition-all duration-300 h-1 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-netflix-red custom-slider">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-6">
+                        <span id="timeDisplay" class="text-sm text-gray-300 font-medium font-mono">0:00</span>
+
+                        <button class="text-white/80 hover:text-white transition" title="Next Episode">
+                            <span class="material-symbols-outlined text-[32px]">skip_next</span>
+                        </button>
+
+                        <button class="text-white/80 hover:text-white transition" title="Subtitles & Audio">
+                            <span class="material-symbols-outlined text-[32px]">subtitles</span>
+                        </button>
+
+                        <button onclick="toggleFullscreen()"
+                            class="text-white/80 hover:text-white transition transform active:scale-110">
+                            <span class="material-symbols-outlined text-[32px]">fullscreen</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- SEARCH LOGIC (Reused) ---
+        const searchBox = document.getElementById('searchBox');
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        let searchDebounce;
+
+        function toggleSearch() {
+            searchBox.classList.toggle('active');
+            if (searchBox.classList.contains('active')) {
+                searchInput.focus();
+            }
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchDebounce);
+            const query = e.target.value.trim();
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            searchDebounce = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                    const data = await res.json();
+                    if (data.results && data.results.length > 0) {
+                        searchResults.innerHTML = data.results.slice(0, 5).map(item => `
+                            <div class="search-result-item" onclick="openItemFromSearch('${item.title.replace(/'/g, "\\'")}', '${item.image}', ${item.isMovie})">
+                                <img src="${item.image}" onerror="this.src='https://via.placeholder.com/50x75'">
+                                <div>
+                                    <div class="text-sm font-bold text-white">${item.title}</div>
+                                    <div class="text-xs text-gray-400">${item.year} • ${item.isMovie ? 'Movie' : 'TV Series'}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        searchResults.style.display = 'flex';
+                    } else {
+                        searchResults.style.display = 'none';
+                    }
+                } catch (e) {
+                    console.error("Search error", e);
+                }
+            }, 300);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchBox.contains(e.target)) {
+                searchBox.classList.remove('active');
+                searchResults.style.display = 'none';
+            }
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                if (query) {
+                    window.location.href = `/search?q=${encodeURIComponent(query)}`;
+                }
+            }
+        });
+
+        function openItemFromSearch(title, image, isMovie) {
+            searchResults.style.display = 'none';
+            if (isMovie) {
+                openMovieModal(title, image);
+            } else {
+                openTVModal(title, image);
+            }
+        }
+
+        // --- SEARCH PAGE LOGIC ---
+        let currentMovieData = null;
+        let allMovies = []; // For local recommendations if needed
+
+        async function initSearch() {
+            const params = new URLSearchParams(window.location.search);
+            const query = params.get('q');
+
+            if (!query) {
+                document.getElementById('resultsGrid').innerHTML = '<div class="col-span-full text-center py-20">Please enter a search term.</div>';
+                document.getElementById('queryDisplay').innerText = '';
+                return;
+            }
+
+            document.getElementById('queryDisplay').innerText = query;
+            document.getElementById('searchInput').value = query; // Fill the input too
+
+            try {
+                const resultsGrid = document.getElementById('resultsGrid');
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    resultsGrid.innerHTML = data.results.map(movie => {
+                        const imgUrl = movie.image || 'https://via.placeholder.com/200x300?text=No+Image';
+                        const badge = movie.isMovie === false ? '<span class="absolute top-2 right-2 bg-netflix-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded">TV</span>' : '';
+
+                        // Handler logic
+                        const handler = movie.isMovie === false
+                            ? `openTVModal('${movie.title.replace(/'/g, "\\'")}', '${movie.image}')`
+                            : `openMovieModal('${movie.title.replace(/'/g, "\\'")}', '${movie.image}')`;
+
+                        return `
+                        <div class="movie-card cursor-pointer relative group transition-transform duration-300 hover:scale-110 hover:z-20" onclick="${handler}">
+                            <div class="relative rounded overflow-hidden shadow-lg aspect-[2/3]">
+                                <img src="${imgUrl}" class="w-full h-full object-cover" loading="lazy" alt="${movie.title}">
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-white text-4xl drop-shadow-lg">play_circle</span>
+                                </div>
+                                ${badge}
+                            </div>
+                            <div class="mt-2 text-sm text-gray-300 group-hover:text-white truncate font-medium">${movie.title}</div>
+                        </div>
+                        `;
+                    }).join('');
+                } else {
+                    resultsGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-20 text-xl">No results found for your search.</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('resultsGrid').innerHTML = '<div class="col-span-full text-center text-red-500 py-20">An error occurred while searching.</div>';
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', initSearch);
+
+
+        // --- MODAL & PLAYER LOGIC (Reused) ---
+        async function openMovieModal(title, imageUrl) {
+            const modal = document.getElementById('movieModal');
+            const modalBody = document.getElementById('modalBody');
+            modal.classList.add('active');
+            modalBody.innerHTML = `
+                <div class="modal-banner" style="background-image: url('${imageUrl}');"><div class="modal-banner-gradient"></div></div>
+                <div class="modal-info"><div class="h-10 bg-gray-800 rounded w-1/2 mb-4 animate-pulse"></div></div>
+            `;
+            try {
+                const response = await fetch(`/api/details/${encodeURIComponent(title)}`);
+                const details = await response.json();
+                if (details.error) {
+                    modalBody.innerHTML = `<div class="p-10 text-center">Error: ${details.error}</div>`;
+                    return;
+                }
+                currentMovieData = details;
+                const actors = Array.isArray(details.actors) ? details.actors.slice(0, 5).join(', ') : 'N/A';
+
+                modalBody.innerHTML = `
+                     <div class="modal-banner" style="background-image: url('${imageUrl}');">
+                        <div class="modal-banner-gradient"></div>
+                        <button class="absolute bottom-10 left-8 bg-white text-black px-8 py-2 rounded font-bold flex items-center gap-2 hover:bg-gray-200 transition" onclick="playMovie()">
+                            <span class="material-symbols-outlined">play_arrow</span> Play
+                        </button>
+                    </div>
+                    <div class="modal-info">
+                        <h1 class="modal-title">${details.title}</h1>
+                        <div class="modal-meta">
+                            <span class="text-green-500 font-bold">${details.rating || 'N/A'} Match</span>
+                            <span>${details.year}</span>
+                            <span class="border border-gray-600 px-1 text-xs text-gray-400">HD</span>
+                        </div>
+                        <p class="mb-6 leading-relaxed text-gray-300">${details.description}</p>
+                        <div class="text-sm text-gray-500">
+                             <div class="mb-1"><span class="text-gray-400">Cast:</span> ${actors}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                modalBody.innerHTML = '<div class="p-10 text-center">Failed</div>';
+            }
+        }
+
+        async function openTVModal(title, imageUrl) {
+            const modal = document.getElementById('movieModal');
+            const modalBody = document.getElementById('modalBody');
+            modal.classList.add('active');
+            modalBody.innerHTML = `
+                <div class="modal-banner" style="background-image: url('${imageUrl}');"><div class="modal-banner-gradient"></div></div>
+                <div class="modal-info"><div class="h-10 bg-gray-800 rounded w-1/2 mb-4 animate-pulse"></div></div>
+            `;
+            try {
+                const response = await fetch(`/api/tv_details/${encodeURIComponent(title)}`);
+                const details = await response.json();
+                if (details.error) {
+                    modalBody.innerHTML = `<div class="p-10 text-center">${details.error}</div>`;
+                    return;
+                }
+                currentTVData = details;
+                currentSeason = 1;
+                const seasonOptions = details.seasons.map((s, i) => `<option value="${i}">Season ${s.seasonNumber}</option>`).join('');
+                const episodesHTML = buildEpisodesHTML(details.seasons[0]?.episodes || []);
+                modalBody.innerHTML = `
+                    <div class="modal-banner" style="background-image: url('${imageUrl}');"><div class="modal-banner-gradient"></div></div>
+                    <div class="modal-info">
+                        <h1 class="modal-title">${details.title}</h1>
+                        <div class="modal-description text-gray-300 mb-4">${details.description}</div>
+                         <div class="episodes-section">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-bold">Episodes</h3>
+                                <select class="bg-black border border-gray-700 text-white p-2 rounded" onchange="changeSeason(this.value)">${seasonOptions}</select>
+                            </div>
+                            <div class="episodes-list flex flex-col gap-4" id="episodesList">${episodesHTML}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('movieModal').classList.remove('active');
+        }
+
+        function buildEpisodesHTML(episodes) {
+            return episodes.map(ep => `
+                <div class="episode-card flex gap-4 bg-[#2a2a2a] p-2 hover:bg-[#333] transition cursor-pointer rounded" onclick="playEpisode(${ep.episodeNumber})">
+                    <div class="relative min-w-[140px] h-[80px]">
+                        <img src="${ep.image}" class="w-full h-full object-cover rounded" onerror="this.src='https://via.placeholder.com/140x80'">
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition">
+                             <span class="material-symbols-outlined">play_circle</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <div class="font-bold text-sm text-gray-200">${ep.episodeNumber}. ${ep.title}</div>
+                        <div class="text-xs text-gray-500 mt-1">${ep.duration || '24m'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function changeSeason(index) {
+            const season = currentTVData.seasons[index];
+            currentSeason = season.seasonNumber;
+            document.getElementById('episodesList').innerHTML = buildEpisodesHTML(season.episodes);
+        }
+
+        // PLAYER LOGIC
+        const player = document.getElementById('videoPlayer');
+        const playerModal = document.getElementById('playerModal');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const playerLoading = document.getElementById('playerLoading');
+        const playerTitle = document.getElementById('playerTitle');
+        const brandingOverlay = document.getElementById('brandingOverlay');
+        const videoContainer = document.getElementById('videoContainer');
+        let hideControlsTimeout;
+
+        function playMovie() {
+            if (currentMovieData && currentMovieData.streamUrl) {
+                openPlayer(currentMovieData.title, currentMovieData.streamUrl);
+            }
+        }
+
+        async function playEpisode(episodeNumber) {
+            if (!currentTVData) return;
+            closeModal();
+            setupPlayerUI(`${currentTVData.title} S${currentSeason}:E${episodeNumber}`);
+            try {
+                const response = await fetch(`/api/tv_stream_url/${encodeURIComponent(currentTVData.title)}/${currentSeason}/${episodeNumber}`);
+                const data = await response.json();
+                if (data.error) { alert(data.error); closePlayer(); return; }
+                const proxyUrl = `/proxy_video?url=${encodeURIComponent(data.url)}`;
+                startVideo(proxyUrl);
+            } catch (e) {
+                console.error(e);
+                closePlayer();
+            }
+        }
+
+        function openPlayer(title, streamUrl) {
+            closeModal();
+            setupPlayerUI(title);
+            const proxyUrl = `/proxy_video?url=${encodeURIComponent(streamUrl)}`;
+            startVideo(proxyUrl);
+        }
+
+        function setupPlayerUI(title) {
+            playerModal.classList.remove('hidden');
+            playerModal.classList.add('flex');
+            playerTitle.innerText = title;
+            brandingOverlay.classList.remove('hidden');
+            videoContainer.style.opacity = '0';
+            playerLoading.classList.add('hidden');
+            setTimeout(() => {
+                brandingOverlay.classList.add('hidden');
+                videoContainer.style.opacity = '1';
+                if (player.readyState < 3) {
+                    playerLoading.classList.remove('hidden');
+                }
+            }, 2500);
+        }
+
+        function startVideo(url) {
+            player.src = url;
+            player.load();
+            player.addEventListener('canplay', () => {
+                if (brandingOverlay.classList.contains('hidden')) {
+                    playerLoading.classList.add('hidden');
+                }
+                player.play();
+                resetHideControlsTimer();
+            }, { once: true });
+            player.addEventListener('waiting', () => {
+                if (brandingOverlay.classList.contains('hidden')) {
+                    document.getElementById('bufferingSpinner').classList.remove('hidden');
+                }
+            });
+            player.addEventListener('playing', () => document.getElementById('bufferingSpinner').classList.add('hidden'));
+        }
+
+        function closePlayer() {
+            player.pause();
+            player.src = '';
+            playerModal.classList.add('hidden');
+            playerModal.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+
+        function togglePlayPause() {
+            const icon = playPauseBtn.querySelector('span');
+            if (player.paused) {
+                player.play();
+                icon.innerText = 'pause';
+            } else {
+                player.pause();
+                icon.innerText = 'play_arrow';
+            }
+        }
+
+        // Progress Bar
+        player.addEventListener('timeupdate', () => {
+            if (!player.duration) return;
+            const pct = (player.currentTime / player.duration) * 100;
+            progressBar.style.width = `${pct}%`;
+
+            const curMins = Math.floor(player.currentTime / 60);
+            const curSecs = Math.floor(player.currentTime % 60);
+            const durMins = Math.floor(player.duration / 60);
+            const durSecs = Math.floor(player.duration % 60);
+            timeDisplay.innerText = `${curMins}:${curSecs < 10 ? '0' + curSecs : curSecs} / ${durMins}:${durSecs < 10 ? '0' + durSecs : durSecs}`;
+        });
+
+        progressContainer.addEventListener('click', (e) => {
+            const rect = progressContainer.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            player.currentTime = pos * player.duration;
+        });
+
+        function skipTime(seconds) {
+            player.currentTime += seconds;
+        }
+
+        function toggleMute() {
+            player.muted = !player.muted;
+            document.getElementById('muteBtn').querySelector('span').innerText = player.muted ? 'volume_off' : 'volume_up';
+        }
+
+        function changeVolume(val) {
+            player.volume = val / 100;
+            player.muted = false;
+            document.getElementById('muteBtn').querySelector('span').innerText = 'volume_up';
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                playerModal.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function resetHideControlsTimer() {
+            clearTimeout(hideControlsTimeout);
+            playerModal.classList.add('show-controls');
+            document.body.style.cursor = 'default';
+            if (!player.paused) {
+                hideControlsTimeout = setTimeout(() => {
+                    playerModal.classList.remove('show-controls');
+                    document.body.style.cursor = 'none';
+                }, 3000);
+            }
+        }
+
+        playerModal.addEventListener('mousemove', resetHideControlsTimer);
+        playerModal.addEventListener('click', resetHideControlsTimer);
+
+    </script>
+</body>
+
+</html>

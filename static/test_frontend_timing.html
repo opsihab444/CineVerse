@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Timing Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #e50914;
+            margin-bottom: 30px;
+        }
+
+        .test-btn {
+            background: #e50914;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .test-btn:hover {
+            background: #f40612;
+        }
+
+        .test-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        .results {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .time-value {
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        .time-value.slow {
+            color: #ff9800;
+        }
+
+        .time-value.very-slow {
+            color: #f44336;
+        }
+
+        .summary {
+            background: #0f3460;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .summary h3 {
+            color: #e50914;
+            margin-bottom: 15px;
+        }
+
+        .log {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-entry.info {
+            color: #00bcd4;
+        }
+
+        .log-entry.success {
+            color: #4caf50;
+        }
+
+        .log-entry.error {
+            color: #f44336;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎬 CineVerse API Timing Test</h1>
+        <p>Testing: <code>http://localhost:8000/api/details/Frankenstein%20%5BHindi%5D?include_stream=true</code></p>
+
+        <button class="test-btn" onclick="runTest()">🚀 Run Speed Test (5 requests)</button>
+
+        <div class="log" id="log"></div>
+
+        <div class="results" id="results" style="display:none;">
+            <h3>📊 Individual Results</h3>
+            <div id="resultsList"></div>
+        </div>
+
+        <div class="summary" id="summary" style="display:none;">
+            <h3>📈 Summary</h3>
+            <div id="summaryContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/api/details/Frankenstein%20%5BHindi%5D?include_stream=true';
+        let results = [];
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function getTimeClass(ms) {
+            if (ms > 4000) return 'very-slow';
+            if (ms > 2500) return 'slow';
+            return '';
+        }
+
+        async function runTest() {
+            const btn = document.querySelector('.test-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Running...';
+
+            results = [];
+            document.getElementById('log').innerHTML = '';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('summary').style.display = 'none';
+
+            log('Starting API speed test...', 'info');
+            log(`URL: ${API_URL}`, 'info');
+
+            for (let i = 0; i < 5; i++) {
+                log(`📡 Request ${i + 1}/5...`, 'info');
+
+                const startTime = performance.now();
+
+                try {
+                    const response = await fetch(API_URL);
+                    const endTime = performance.now();
+                    const elapsed = endTime - startTime;
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        results.push({
+                            request: i + 1,
+                            time: elapsed,
+                            status: response.status,
+                            title: data.title || 'Unknown'
+                        });
+                        log(`✅ Request ${i + 1}: ${elapsed.toFixed(0)}ms - ${data.title}`, 'success');
+                    } else {
+                        results.push({
+                            request: i + 1,
+                            time: elapsed,
+                            status: response.status,
+                            error: 'HTTP Error'
+                        });
+                        log(`❌ Request ${i + 1}: HTTP ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    const endTime = performance.now();
+                    const elapsed = endTime - startTime;
+                    results.push({
+                        request: i + 1,
+                        time: elapsed,
+                        error: error.message
+                    });
+                    log(`❌ Request ${i + 1}: ${error.message}`, 'error');
+                }
+            }
+
+            showResults();
+            btn.disabled = false;
+            btn.textContent = '🚀 Run Speed Test (5 requests)';
+        }
+
+        function showResults() {
+            // Show individual results
+            const successResults = results.filter(r => !r.error);
+
+            if (successResults.length > 0) {
+                const resultsList = document.getElementById('resultsList');
+                resultsList.innerHTML = results.map(r => `
+                    <div class="result-item">
+                        <span>Request ${r.request}</span>
+                        <span class="time-value ${getTimeClass(r.time)}">${r.time.toFixed(0)} ms (${(r.time / 1000).toFixed(2)}s)</span>
+                    </div>
+                `).join('');
+                document.getElementById('results').style.display = 'block';
+
+                // Show summary
+                const times = successResults.map(r => r.time);
+                const avg = times.reduce((a, b) => a + b, 0) / times.length;
+                const min = Math.min(...times);
+                const max = Math.max(...times);
+
+                document.getElementById('summaryContent').innerHTML = `
+                    <div class="result-item">
+                        <span>Fastest</span>
+                        <span class="time-value">${min.toFixed(0)} ms (${(min / 1000).toFixed(2)}s)</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Slowest</span>
+                        <span class="time-value ${getTimeClass(max)}">${max.toFixed(0)} ms (${(max / 1000).toFixed(2)}s)</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Average</span>
+                        <span class="time-value ${getTimeClass(avg)}">${avg.toFixed(0)} ms (${(avg / 1000).toFixed(2)}s)</span>
+                    </div>
+                    <div class="result-item">
+                        <span>⚡ Direct Python test was</span>
+                        <span class="time-value">~2050 ms (2.05s)</span>
+                    </div>
+                `;
+                document.getElementById('summary').style.display = 'block';
+
+                log(`📊 Test complete! Average: ${avg.toFixed(0)}ms`, 'success');
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watching...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        .player-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            padding: 40px 20px 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .player-container:hover .controls-overlay,
+        .player-container.show-controls .controls-overlay {
+            opacity: 1;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #e50914;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            transition: transform 0.2s;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .time-display {
+            font-size: 14px;
+            color: white;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .volume-slider {
+            width: 80px;
+            cursor: pointer;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.3s, background 0.3s;
+            z-index: 100;
+        }
+
+        .player-container:hover .back-btn,
+        .player-container.show-controls .back-btn {
+            opacity: 1;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #e50914;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="player-container" id="playerContainer">
+        <button class="back-btn" onclick="window.location.href='/'">← Back to Browse</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Loading movie...</div>
+        </div>
+
+        <video id="videoPlayer" preload="metadata"></video>
+
+        <div class="controls-overlay">
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" id="playPauseBtn" onclick="togglePlayPause()">▶</button>
+                <button class="control-btn" onclick="skipTime(-10)">⏪</button>
+                <button class="control-btn" onclick="skipTime(10)">⏩</button>
+                <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+                <div class="spacer"></div>
+                <div class="volume-container">
+                    <button class="control-btn" id="muteBtn" onclick="toggleMute()">🔊</button>
+                    <input type="range" min="0" max="100" value="100" class="volume-slider" id="volumeSlider"
+                        onchange="changeVolume(this.value)">
+                </div>
+                <button class="control-btn" onclick="toggleFullscreen()">⛶</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const movieTitle = "{{ fid }}";
+        const player = document.getElementById('videoPlayer');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const loading = document.getElementById('loading');
+        const playerContainer = document.getElementById('playerContainer');
+
+        let hideControlsTimeout;
+
+        async function loadMovie() {
+            try {
+                console.log("Loading movie:", movieTitle);
+
+                // Fetch details with stream URL
+                const response = await fetch(`/api/details/${encodeURIComponent(movieTitle)}`);
+                const details = await response.json();
+
+                if (details.error) {
+                    loading.innerHTML = `<div style="text-align:center;">Error: ${details.error}</div>`;
+                    return;
+                }
+
+                if (!details.streamUrl) {
+                    loading.innerHTML = `<div style="text-align:center;">Stream URL not available</div>`;
+                    return;
+                }
+
+                document.title = "Watching: " + details.title;
+
+                // Set video source via proxy
+                const proxyUrl = `/proxy_video?url=${encodeURIComponent(details.streamUrl)}`;
+                player.src = proxyUrl;
+
+                // Hide loading when video can play
+                player.addEventListener('canplay', () => {
+                    loading.style.display = 'none';
+                    player.play();
+                });
+
+                player.addEventListener('error', (e) => {
+                    console.error('Video error:', e);
+                    loading.innerHTML = `<div style="text-align:center;">Playback error. Try another movie.</div>`;
+                });
+
+            } catch (error) {
+                console.error('Load error:', error);
+                loading.innerHTML = `<div style="text-align:center;">Failed to load movie</div>`;
+            }
+        }
+
+        function togglePlayPause() {
+            if (player.paused) {
+                player.play();
+                playPauseBtn.textContent = '⏸';
+            } else {
+                player.pause();
+                playPauseBtn.textContent = '▶';
+            }
+        }
+
+        function skipTime(seconds) {
+            player.currentTime += seconds;
+        }
+
+        function toggleMute() {
+            const muteBtn = document.getElementById('muteBtn');
+            player.muted = !player.muted;
+            muteBtn.textContent = player.muted ? '🔇' : '🔊';
+        }
+
+        function changeVolume(value) {
+            player.volume = value / 100;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                playerContainer.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) {
+                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Update progress bar
+        player.addEventListener('timeupdate', () => {
+            const progress = (player.currentTime / player.duration) * 100;
+            progressBar.style.width = progress + '%';
+            timeDisplay.textContent = `${formatTime(player.currentTime)} / ${formatTime(player.duration)}`;
+        });
+
+        // Seek on progress bar click
+        progressContainer.addEventListener('click', (e) => {
+            const rect = progressContainer.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            player.currentTime = pos * player.duration;
+        });
+
+        // Auto-hide controls
+        function resetHideControlsTimer() {
+            playerContainer.classList.add('show-controls');
+            clearTimeout(hideControlsTimeout);
+            hideControlsTimeout = setTimeout(() => {
+                if (!player.paused) {
+                    playerContainer.classList.remove('show-controls');
+                }
+            }, 3000);
+        }
+
+        playerContainer.addEventListener('mousemove', resetHideControlsTimer);
+        playerContainer.addEventListener('click', (e) => {
+            if (e.target === player) {
+                togglePlayPause();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case ' ':
+                    e.preventDefault();
+                    togglePlayPause();
+                    break;
+                case 'ArrowLeft':
+                    skipTime(-10);
+                    break;
+                case 'ArrowRight':
+                    skipTime(10);
+                    break;
+                case 'f':
+                case 'F':
+                    toggleFullscreen();
+                    break;
+                case 'm':
+                case 'M':
+                    toggleMute();
+                    break;
+            }
+        });
+
+        loadMovie();
+    </script>
+</body>
+
+</html>

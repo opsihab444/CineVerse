@@ -1,0 +1,4071 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineVerse</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="apple-touch-icon" href="/static/favicon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        netflix: {
+                            red: '#E50914',
+                            black: '#141414',
+                            dark: '#181818',
+                            gray: '#2F2F2F'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Hide Scrollbar for Movie Rows */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        /* Custom Scrollbar for Main Page */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #333 0%, #222 100%);
+            border-radius: 4px;
+            border: 1px solid #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #E50914 0%, #b20710 100%);
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: #141414;
+        }
+
+        /* Firefox Scrollbar */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #333 #141414;
+        }
+
+        /* Existing Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        /* Custom Scrollbar for Modal */
+        .modal-overlay::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-overlay::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .modal-overlay::-webkit-scrollbar-thumb {
+            background: rgba(229, 9, 20, 0.5);
+            border-radius: 3px;
+        }
+
+        .modal-overlay::-webkit-scrollbar-thumb:hover {
+            background: rgba(229, 9, 20, 0.8);
+        }
+
+        /* Hide body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .modal-content {
+            background: #181818;
+            border-radius: 12px;
+            max-width: 1000px;
+            width: 95%;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+            margin: auto;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-banner {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            /* Taller banner */
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px 8px 0 0;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        .modal-banner-gradient {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(to top, #181818, transparent);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .modal-info {
+            padding: 30px;
+        }
+
+        .modal-title {
+            font-size: 2.5em;
+            margin: 0 0 20px 0;
+            font-weight: bold;
+        }
+
+        .modal-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #46d369;
+            font-size: 16px;
+        }
+
+        /* ============================================ */
+        /* VIDEO BUFFERING SPINNER (Premium SVG Style) */
+        /* ============================================ */
+        .video-spinner-container {
+            width: 56px;
+            height: 56px;
+            position: relative;
+        }
+
+        .video-spinner-svg {
+            width: 100%;
+            height: 100%;
+            animation: spinner-rotate 1.4s linear infinite;
+        }
+
+        .video-spinner-svg circle {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            animation: spinner-dash 1.4s ease-in-out infinite;
+        }
+
+        .video-spinner-svg .spinner-track {
+            stroke: rgba(255, 255, 255, 0.15);
+            animation: none;
+        }
+
+        .video-spinner-svg .spinner-progress {
+            stroke: #E50914;
+            filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.6));
+        }
+
+        @keyframes spinner-rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes spinner-dash {
+            0% {
+                stroke-dasharray: 1, 150;
+                stroke-dashoffset: 0;
+            }
+
+            50% {
+                stroke-dasharray: 90, 150;
+                stroke-dashoffset: -35;
+            }
+
+            100% {
+                stroke-dasharray: 90, 150;
+                stroke-dashoffset: -124;
+            }
+        }
+
+        #mobileLoadingSpinner.hidden {
+            display: none !important;
+        }
+
+        /* ============================================ */
+        /* MOBILE RESPONSIVE MODAL STYLES */
+        /* ============================================ */
+        @media (max-width: 768px) {
+            .modal-overlay.active {
+                padding: 0;
+                align-items: stretch;
+                background: #141414;
+            }
+
+            .modal-content {
+                width: 100%;
+                max-width: 100%;
+                min-height: 100vh;
+                border-radius: 0;
+                animation: modalSlideRight 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            }
+
+            @keyframes modalSlideRight {
+                from {
+                    transform: translateX(100%);
+                }
+
+                to {
+                    transform: translateX(0);
+                }
+            }
+
+            /* Hide default close button on mobile, show back button instead */
+            .modal-close {
+                display: none;
+            }
+
+            /* Mobile Back Button - shown via JS */
+            .mobile-back-btn {
+                display: flex !important;
+            }
+
+            .modal-info {
+                padding: 16px;
+            }
+
+            .modal-title {
+                font-size: 1.4em;
+                margin-bottom: 8px;
+                line-height: 1.2;
+            }
+
+            .modal-meta {
+                font-size: 12px;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-bottom: 12px;
+            }
+
+            /* NEW: Mobile Header Layout - Horizontal with poster */
+            .mobile-modal-header {
+                display: flex !important;
+                gap: 16px;
+                padding: 16px;
+                padding-top: 60px;
+                /* Space for back button */
+                background: linear-gradient(135deg, #1a1a1a 0%, #141414 100%);
+            }
+
+            .mobile-modal-header .poster-side {
+                flex-shrink: 0;
+                width: 110px;
+            }
+
+            .mobile-modal-header .poster-side img {
+                width: 100%;
+                aspect-ratio: 2/3;
+                object-fit: cover;
+                border-radius: 8px;
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            }
+
+            .mobile-modal-header .info-side {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .mobile-modal-header .info-side .title {
+                font-size: 1.25em;
+                font-weight: 700;
+                color: white;
+                margin-bottom: 8px;
+                line-height: 1.2;
+            }
+
+            .mobile-modal-header .info-side .meta-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                font-size: 11px;
+                color: #888;
+                margin-bottom: 10px;
+            }
+
+            .mobile-modal-header .info-side .meta-row span {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .mobile-modal-header .info-side .meta-row .divider {
+                color: #444;
+            }
+
+            .mobile-modal-header .info-side .desc-preview {
+                font-size: 12px;
+                color: #aaa;
+                line-height: 1.5;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .mobile-modal-header .info-side .more-link {
+                color: white;
+                font-size: 12px;
+                margin-top: 6px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            /* Hide desktop banner on mobile when mobile header is present */
+            .modal-banner.hide-mobile {
+                display: none !important;
+            }
+
+            /* Mobile Episodes Section */
+            .episodes-section {
+                padding: 16px !important;
+                border-top: none !important;
+            }
+
+            /* Mobile Season Tabs - Pill style */
+            #seasonTabsContainer {
+                padding-bottom: 8px;
+            }
+
+            #seasonTabsContainer button {
+                padding: 8px 16px !important;
+                font-size: 12px !important;
+                white-space: nowrap;
+            }
+
+            /* Mobile Play Button - Full Width */
+            .btn-watch {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 20px;
+                font-size: 15px;
+                border-radius: 6px;
+            }
+
+            /* Mobile Actions Row */
+            .mobile-actions {
+                display: flex !important;
+                gap: 12px;
+                padding: 0 16px 16px;
+            }
+
+            .mobile-actions button {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 14px;
+                border: none;
+                cursor: pointer;
+            }
+
+            .mobile-actions .play-btn {
+                background: white;
+                color: black;
+            }
+
+            .mobile-actions .list-btn {
+                background: #333;
+                color: white;
+            }
+
+            /* Recommended Grid Mobile */
+            .recommended-section .grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 12px !important;
+            }
+
+            /* Episode cards on mobile */
+            .episode-card-mobile {
+                aspect-ratio: 16/9;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 400px) {
+            .mobile-modal-header {
+                gap: 12px;
+                padding: 12px;
+                padding-top: 56px;
+            }
+
+            .mobile-modal-header .poster-side {
+                width: 90px;
+            }
+
+            .mobile-modal-header .info-side .title {
+                font-size: 1.1em;
+            }
+
+            .modal-info {
+                padding: 12px;
+            }
+        }
+
+        /* Hide mobile-only elements on desktop */
+        .mobile-back-btn,
+        .mobile-modal-header,
+        .mobile-actions,
+        .mobile-quick-view,
+        .mobile-bottom-sheet {
+            display: none;
+        }
+
+        /* ============================================ */
+        /* MOBILE QUICK PLAY VIEW (New Design) */
+        /* ============================================ */
+        @media (max-width: 768px) {
+
+            /* Hide desktop modal elements on mobile */
+            .modal-banner.hide-mobile,
+            .modal-info.hidden {
+                display: none !important;
+            }
+
+            /* NEW: Mobile Quick View Container */
+            .mobile-quick-view {
+                display: block !important;
+                background: #141414;
+                min-height: 100vh;
+            }
+
+            /* Video Preview Area */
+            .mobile-quick-view .video-preview {
+                position: relative;
+                width: 100%;
+                aspect-ratio: 16/9;
+                background: #000;
+                overflow: hidden;
+            }
+
+            .mobile-quick-view .video-preview img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .mobile-quick-view .video-preview .play-overlay {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.3);
+            }
+
+            .mobile-quick-view .video-preview .play-btn-big {
+                width: 60px;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #141414;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            }
+
+            /* Inline Video Player */
+            .mobile-quick-view .video-preview video {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                z-index: 5;
+            }
+
+            .mobile-quick-view .video-preview #mobilePlayerControls {
+                z-index: 10;
+            }
+
+            .mobile-quick-view .video-preview .play-overlay {
+                z-index: 8;
+            }
+
+            /* Title Row */
+            .mobile-quick-view .title-row {
+                padding: 16px;
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 12px;
+            }
+
+            .mobile-quick-view .title-row .title {
+                font-size: 1.2em;
+                font-weight: 700;
+                color: white;
+                flex: 1;
+            }
+
+            .mobile-quick-view .title-row .info-btn {
+                background: transparent;
+                border: none;
+                color: #888;
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                cursor: pointer;
+            }
+
+            /* Meta Row */
+            .mobile-quick-view .meta-row {
+                padding: 0 16px 12px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 12px;
+                color: #888;
+            }
+
+            .mobile-quick-view .meta-row .rating {
+                color: #f5c518;
+                display: flex;
+                align-items: center;
+                gap: 3px;
+            }
+
+            .mobile-quick-view .meta-row .badge {
+                background: #333;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+
+            /* Action Bar */
+            .mobile-quick-view .action-bar {
+                display: flex;
+                gap: 6px;
+                padding: 0 16px 16px;
+                overflow-x: auto;
+            }
+
+            .mobile-quick-view .action-bar button {
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 10px 16px;
+                background: #222;
+                border: 1px solid #333;
+                border-radius: 20px;
+                color: white;
+                font-size: 12px;
+                font-weight: 500;
+                cursor: pointer;
+            }
+
+            .mobile-quick-view .action-bar button span {
+                font-size: 18px;
+            }
+
+            /* Resources Section */
+            .mobile-quick-view .resources-section {
+                padding: 12px 16px;
+                border-top: 1px solid #222;
+            }
+
+            .mobile-quick-view .resources-section .section-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+                margin-bottom: 12px;
+            }
+
+            /* Dropdowns Row */
+            .mobile-quick-view .dropdowns-row {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .mobile-quick-view .dropdown-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 14px;
+                background: #1a1a1a;
+                border: 1px solid #333;
+                border-radius: 6px;
+                color: #ccc;
+                font-size: 13px;
+            }
+
+            /* Episode Pills */
+            .mobile-quick-view .episode-pills {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+
+            .mobile-quick-view .episode-pills::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-quick-view .episode-pill {
+                flex-shrink: 0;
+                min-width: 44px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #1a1a1a;
+                border: 1px solid #333;
+                border-radius: 6px;
+                color: #888;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .mobile-quick-view .episode-pill.active {
+                background: #E50914;
+                border-color: #E50914;
+                color: white;
+            }
+
+            .mobile-quick-view .episode-pill:hover {
+                border-color: #E50914;
+            }
+
+            /* For You Section */
+            .mobile-quick-view .for-you-section {
+                padding: 16px;
+                border-top: 1px solid #222;
+            }
+
+            .mobile-quick-view .for-you-section .section-header {
+                display: flex;
+                gap: 20px;
+                margin-bottom: 16px;
+            }
+
+            .mobile-quick-view .for-you-section .tab {
+                font-size: 14px;
+                font-weight: 600;
+                color: #666;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0;
+            }
+
+            .mobile-quick-view .for-you-section .tab.active {
+                color: white;
+            }
+
+            .mobile-quick-view .for-you-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+
+            .mobile-quick-view .for-you-card {
+                position: relative;
+                aspect-ratio: 2/3;
+                border-radius: 6px;
+                overflow: hidden;
+            }
+
+            .mobile-quick-view .for-you-card img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .mobile-quick-view .for-you-card .lang-badge {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                background: #E50914;
+                color: white;
+                font-size: 9px;
+                font-weight: 600;
+                padding: 2px 6px;
+                border-radius: 3px;
+            }
+
+            /* ============================================ */
+            /* MOBILE BOTTOM SHEET (Details Expanded) */
+            /* ============================================ */
+            .mobile-bottom-sheet {
+                display: none;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                max-height: 70vh;
+                background: #1a1a1a;
+                border-top-left-radius: 16px;
+                border-top-right-radius: 16px;
+                z-index: 2000;
+                overflow-y: auto;
+                transform: translateY(100%);
+                transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+
+            .mobile-bottom-sheet.active {
+                display: block;
+                transform: translateY(0);
+            }
+
+            .mobile-bottom-sheet .sheet-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px;
+                border-bottom: 1px solid #333;
+                position: sticky;
+                top: 0;
+                background: #1a1a1a;
+                z-index: 10;
+            }
+
+            .mobile-bottom-sheet .sheet-header h3 {
+                font-size: 16px;
+                font-weight: 600;
+                color: white;
+            }
+
+            .mobile-bottom-sheet .sheet-header .close-btn {
+                background: none;
+                border: none;
+                color: #888;
+                font-size: 24px;
+                cursor: pointer;
+            }
+
+            /* Sheet Content - Poster + Info Row */
+            .mobile-bottom-sheet .content-row {
+                display: flex;
+                gap: 14px;
+                padding: 16px;
+            }
+
+            .mobile-bottom-sheet .content-row .poster {
+                width: 70px;
+                aspect-ratio: 2/3;
+                border-radius: 6px;
+                object-fit: cover;
+            }
+
+            .mobile-bottom-sheet .content-row .info {
+                flex: 1;
+            }
+
+            .mobile-bottom-sheet .content-row .info .title {
+                font-size: 15px;
+                font-weight: 700;
+                color: white;
+                margin-bottom: 6px;
+            }
+
+            .mobile-bottom-sheet .content-row .info .meta {
+                font-size: 11px;
+                color: #888;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .mobile-bottom-sheet .content-row .info .meta .rating {
+                color: #f5c518;
+            }
+
+            /* Info Section */
+            .mobile-bottom-sheet .info-section {
+                padding: 0 16px 16px;
+            }
+
+            .mobile-bottom-sheet .info-section h4 {
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+                margin-bottom: 8px;
+            }
+
+            .mobile-bottom-sheet .info-section p {
+                font-size: 13px;
+                color: #aaa;
+                line-height: 1.6;
+            }
+
+            /* Starring Section */
+            .mobile-bottom-sheet .starring-section {
+                padding: 16px;
+                border-top: 1px solid #222;
+            }
+
+            .mobile-bottom-sheet .starring-section h4 {
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+                margin-bottom: 12px;
+            }
+
+            .mobile-bottom-sheet .actors-scroll {
+                display: flex;
+                gap: 12px;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+
+            .mobile-bottom-sheet .actor-card {
+                flex-shrink: 0;
+                width: 70px;
+                text-align: center;
+            }
+
+            .mobile-bottom-sheet .actor-card img {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                object-fit: cover;
+                margin-bottom: 6px;
+            }
+
+            .mobile-bottom-sheet .actor-card .name {
+                font-size: 11px;
+                color: white;
+                font-weight: 500;
+            }
+
+            .mobile-bottom-sheet .actor-card .role {
+                font-size: 10px;
+                color: #666;
+            }
+
+            /* Sheet Overlay */
+            .sheet-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 1999;
+            }
+
+            .sheet-overlay.active {
+                display: block;
+            }
+        }
+
+        .modal-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #46d369;
+            font-size: 16px;
+        }
+
+        .btn-watch {
+            background: white;
+            color: black;
+            border: none;
+            padding: 12px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-watch:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Netflix-style buffering spinner - Premium Redesign */
+        .netflix-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #E50914;
+            animation: spin 1s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(229, 9, 20, 0.4);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Branding Animation Styles */
+        .branding-logo-container {
+            width: 120px;
+            height: 120px;
+            filter: drop-shadow(0 0 20px rgba(229, 9, 20, 0.6));
+            animation: brand-scale 2.5s ease-in-out forwards;
+        }
+
+
+        .branding-logo path {
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+            animation: draw-m 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes draw-m {
+            0% {
+                stroke-dashoffset: 200;
+            }
+
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes brand-scale {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            20% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            80% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Range Slider Custom Styling */
+        input[type=range].custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #E50914;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        input[type=range].custom-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #4b5563;
+            border-radius: 2px;
+        }
+
+        /* Episodes List Styling */
+        .episodes-section {
+            padding: 30px;
+            border-top: 1px solid #333;
+        }
+
+        .episode-card {
+            display: flex;
+            gap: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .episode-card:hover {
+            background: #3a3a3a;
+        }
+
+        .episode-thumbnail {
+            width: 140px;
+            height: 80px;
+            object-fit: cover;
+        }
+
+        .episode-info {
+            padding: 10px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .episode-play-icon {
+            display: flex;
+            align-items: center;
+            padding-right: 20px;
+            color: #e50914;
+            opacity: 0;
+        }
+
+        .episode-card:hover .episode-play-icon {
+            opacity: 1;
+        }
+
+        /* Updated Custom Vertical Hover Card */
+        .hover-card-portal {
+            position: absolute;
+            display: none;
+            flex-direction: column;
+            background: #181818;
+            border-radius: 8px;
+            /* Slightly rounder */
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95);
+            /* Deep shadow for pop effect */
+            z-index: 9999;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-origin: center center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hover-card-portal.active {
+            display: flex;
+            animation: popupVertical 0.3s forwards;
+        }
+
+        @keyframes popupVertical {
+            0% {
+                transform: scale(1);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1.4);
+                /* Grow 40% larger */
+                opacity: 1;
+            }
+        }
+
+        /* Image fills the whole card */
+        .hc-image-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .hc-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Content overlays the bottom */
+        .hc-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 15px;
+            /* Removed heavy gradient as requested */
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 90%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            justify-content: flex-end;
+            /* Allow image to be seen more */
+        }
+
+        .hc-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+            align-items: center;
+        }
+
+        .hc-btn-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        .hc-btn-circle:hover {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .hc-btn-play {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: white;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .hc-btn-play:hover {
+            transform: scale(1.1);
+            background: #e5e5e5;
+        }
+
+        /* Search Styles */
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #ccc;
+            color: white;
+            padding: 5px 10px;
+            padding-left: 35px;
+            font-size: 14px;
+            width: 0;
+            opacity: 0;
+            transition: width 0.3s ease, opacity 0.3s ease;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .search-box.active .search-input {
+            width: 250px;
+            opacity: 1;
+            cursor: text;
+        }
+
+        .search-icon-btn {
+            position: absolute;
+            left: 0;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .search-results-dropdown {
+            position: absolute;
+            top: 40px;
+            right: 0;
+            width: 300px;
+            background: #181818;
+            border: 1px solid #333;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-bottom: 1px solid #2f2f2f;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #2f2f2f;
+        }
+
+        /* --- NEW TOP NAV LAYOUT (No Sidebar) --- */
+        :root {
+            --header-height: 68px;
+        }
+
+        /* Header is now the main nav, no sidebar */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--header-height);
+            z-index: 100;
+            padding: 0 4%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+            transition: background 0.3s;
+        }
+
+        header.scrolled {
+            background: rgba(20, 20, 20, 0.98);
+        }
+
+        /* Main Content (No sidebar, full width) */
+        .main-content {
+            margin-left: 0;
+            min-height: 100vh;
+            background: #141414;
+        }
+
+        /* Top Nav Links */
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            color: #ccc;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .nav-links a.active {
+            color: white;
+            font-weight: 700;
+        }
+
+        /* Brand Logo */
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E50914;
+            font-size: 22px;
+            font-weight: 800;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .header-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+
+        /* Banner Carousel Styles */
+        #banner {
+            transition: background-image 0.8s ease-in-out;
+            position: relative;
+        }
+
+        .banner-overlay-grad {
+            background: linear-gradient(77deg, rgba(0, 0, 0, .6) 0, rgba(0, 0, 0, 0) 85%);
+        }
+    </style>
+</head>
+
+<!-- MAIN CONTENT WRAPPER (No Sidebar) -->
+<div class="main-content">
+
+    <header id="mainHeader">
+        <!-- Left: Logo + Nav -->
+        <div class="flex items-center gap-10">
+            <a href="/" class="header-logo">
+                <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M60 10 C32.3858 10 10 32.3858 10 60 C10 87.6142 32.3858 110 60 110 C80.5 110 98 98 105.5 80"
+                        stroke="#E50914" stroke-width="12" stroke-linecap="round" />
+                    <path d="M60 40 L90 60 L60 80 V40 Z" fill="#E50914" />
+                </svg>
+                CINEVERSE
+            </a>
+
+            <nav class="nav-links">
+                <a href="/" id="nav-home" class="active" onclick="handleNavClick(event, 'home', '/')">Home</a>
+                <a href="/tv" id="nav-tv" onclick="handleNavClick(event, 'tv', '/tv')">TV Series</a>
+                <a href="/movies" id="nav-movie" onclick="handleNavClick(event, 'movie', '/movies')">Movies</a>
+                <a href="/animation" id="nav-animation"
+                    onclick="handleNavClick(event, 'animation', '/animation')">Animation</a>
+            </nav>
+        </div>
+
+        <!-- Right: Search + User -->
+        <div class="flex items-center gap-6">
+            <div class="search-box" id="searchBox">
+                <button class="search-icon-btn" onclick="toggleSearch()">
+                    <span class="material-symbols-outlined text-2xl">search</span>
+                </button>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search Movies & Series">
+                <div id="searchResults" class="search-results-dropdown"></div>
+            </div>
+
+            <button class="text-white/70 hover:text-white hidden md:block">
+                <span class="material-symbols-outlined text-2xl">apps</span>
+            </button>
+
+            <button class="text-white/70 hover:text-white relative hidden md:block">
+                <span class="material-symbols-outlined text-2xl">notifications</span>
+                <span
+                    class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-[10px] flex items-center justify-center font-bold">3</span>
+            </button>
+
+
+            <!-- Demo Account Avatar SVG -->
+            <div class="hidden md:flex items-center gap-2 cursor-pointer group">
+                <svg class="w-8 h-8 rounded" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="32" height="32" rx="4" fill="#E50914" />
+                    <text x="16" y="21" text-anchor="middle" fill="white" font-size="14" font-weight="bold"
+                        font-family="Arial">D</text>
+                </svg>
+                <span
+                    class="material-symbols-outlined text-white/70 group-hover:text-white text-sm">arrow_drop_down</span>
+            </div>
+
+            <!-- Mobile hamburger -->
+            <button class="mobile-menu-btn md:hidden text-white" onclick="toggleMobileNav()">
+                <span class="material-symbols-outlined text-3xl">menu</span>
+            </button>
+        </div>
+    </header>
+
+    <div id="banner" class="relative h-[85vh] w-full bg-cover bg-center flex items-center"
+        style="background-image: url('');">
+
+        <div class="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-black/20"></div>
+        <div class="absolute inset-0 banner-overlay-grad"></div>
+
+        <div class="relative z-10 max-w-2xl px-[4%] mt-20">
+            <!-- Meta tags for banner -->
+            <div class="flex items-center gap-3 mb-4 text-sm font-semibold">
+                <span class="text-netflix-red tracking-wider">#1 in Movies Today</span>
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-black mb-6 drop-shadow-lg leading-tight tracking-tight"
+                id="banner-title">
+                Loading...
+            </h1>
+
+            <div class="flex items-center gap-4 text-gray-200 text-sm mb-8 font-medium">
+                <span class="text-green-400">98% Match</span>
+                <span id="banner-year">2024</span>
+                <span class="border border-white/30 px-2 py-0.5 rounded text-xs">HD</span>
+                <span id="banner-meta">Action, Drama</span>
+            </div>
+
+            <p class="text-gray-300 text-lg mb-8 line-clamp-3 max-w-xl" id="banner-desc">
+                <!-- Desc populated by JS -->
+            </p>
+
+            <div class="flex gap-4">
+                <button id="banner-play"
+                    class="bg-white text-black px-8 py-3.5 rounded font-bold text-lg inline-flex items-center gap-2 hover:bg-gray-200 transition transform hover:scale-105">
+                    <span class="material-symbols-outlined text-3xl">play_arrow</span> Play
+                </button>
+                <button id="banner-info"
+                    class="bg-gray-600/80 backdrop-blur-md text-white px-8 py-3.5 rounded font-bold text-lg inline-flex items-center gap-2 hover:bg-gray-600 transition transform hover:scale-105">
+                    <span class="material-symbols-outlined text-3xl">info</span> More Info
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="pb-20 -mt-20 relative z-20">
+        <!-- Initial Skeleton for Homepage -->
+        <div id="homeSkeleton" class="animate-pulse px-[4%]">
+            <div class="h-8 w-48 bg-gray-800 rounded mt-10 mb-6"></div>
+            <div class="flex gap-4 overflow-hidden mb-12">
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto hidden md:block">
+                </div>
+            </div>
+            <div class="h-8 w-48 bg-gray-800 rounded mt-10 mb-6"></div>
+            <div class="flex gap-4 overflow-hidden">
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto"></div>
+                <div class="min-w-[160px] md:min-w-[220px] aspect-[2/3] bg-gray-800 rounded mx-auto hidden md:block">
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Hover Moving Card Portal -->
+    <div id="hoverCard" class="hover-card-portal" onmouseleave="hideHoverCard()">
+        <div class="hc-image-container">
+            <img id="hcImage" src="" alt="">
+        </div>
+        <div class="hc-content">
+            <div class="hc-buttons">
+                <div class="hc-btn-play" onclick="playFromHoverCard()">
+                    <span class="material-symbols-outlined"
+                        style="font-size: 24px; font-weight: bold;">play_arrow</span>
+                </div>
+                <div class="hc-btn-circle" title="Add to My List">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+                </div>
+                <div class="hc-btn-circle" title="Like">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">thumb_up</span>
+                </div>
+                <div class="ml-auto hc-btn-circle" title="More Info" onclick="detailsFromHoverCard()">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">keyboard_arrow_down</span>
+                </div>
+            </div>
+
+            <div class="text-white font-bold text-lg leading-tight shadow-black drop-shadow-md" id="hcTitle">Movie Title
+            </div>
+
+            <div class="flex items-center gap-2 text-xs font-semibold mt-1">
+                <span class="text-green-400">98% Match</span>
+                <span class="border border-white/40 px-1 py-0.5 rounded text-[10px] text-white/80">HD</span>
+                <span id="hcType" class="text-white/80">TV Series</span>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5 text-[11px] text-gray-300 mt-1" id="hcGenres">
+                Action • Thriller • Drama
+            </div>
+        </div>
+    </div>
+
+    <!-- Movie Details Modal -->
+    <div class="modal-overlay" id="movieModal">
+        <div class="modal-content text-white">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div id="modalBody">
+                <div class="flex items-center justify-center h-96">
+                    <div class="netflix-spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!--  DISCLAIMER MODAL  -->
+    <!-- ============================================== -->
+    <div id="disclaimerModal"
+        class="fixed inset-0 z-[3000] flex items-center justify-center bg-black/90 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-500">
+        <div
+            class="bg-[#181818] border border-white/10 rounded-xl p-8 max-w-lg w-[90%] shadow-2xl transform scale-95 transition-transform duration-500 relative overflow-hidden group">
+            <!-- Decorative Glow -->
+            <div
+                class="absolute -top-20 -left-20 w-40 h-40 bg-netflix-red/20 blur-[60px] rounded-full group-hover:bg-netflix-red/30 transition duration-1000">
+            </div>
+
+            <div class="relative z-10 flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-6 text-netflix-red border border-white/5">
+                    <span class="material-symbols-outlined text-3xl">warning</span>
+                </div>
+
+                <h3 class="text-2xl font-bold text-white mb-4 tracking-wide">Disclaimer</h3>
+
+                <div class="text-gray-300 text-sm leading-relaxed mb-8 space-y-4">
+                    <p>"All videos and pictures on <span class="text-white font-semibold">CineVerse</span> are from the
+                        Internet, and their copyrights belong to the original creators."</p>
+                    <p>We only provide webpage services and do not store, record, or upload any content.</p>
+                </div>
+
+                <button onclick="acceptDisclaimer()"
+                    class="bg-netflix-red hover:bg-[#b20710] text-white px-8 py-3 rounded font-bold text-sm tracking-widest uppercase transition-all transform hover:scale-105 shadow-lg active:scale-95 w-full md:w-auto">
+                    I Understand
+                </button>
+
+                <div class="mt-6 text-xs text-gray-500 font-mono">
+                    — moviebox.ph (Sunday, July 13th, 2025)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!--  REDESIGNED PREMIUM VIDEO PLAYER  -->
+    <!-- ============================================== -->
+    <div id="playerModal"
+        class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center font-sans overflow-hidden group/player">
+
+        <!-- Top Bar (Back, Title, Flag) -->
+        <div id="playerTopBar"
+            class="absolute top-0 left-0 right-0 p-6 z-[200] flex justify-between items-center bg-gradient-to-b from-black/90 to-transparent opacity-0 [.show-controls_&]:opacity-100 transition-opacity duration-300">
+            <div class="flex items-center gap-6">
+                <button onclick="closePlayer()"
+                    class="text-white/80 hover:text-white transition-transform hover:scale-110">
+                    <span class="material-symbols-outlined text-4xl shadow-lg">arrow_back</span>
+                </button>
+                <!-- Title is empty initially, populated by JS -->
+                <div id="playerTitle" class="text-lg md:text-xl font-bold text-white drop-shadow-md tracking-wide">
+                </div>
+            </div>
+            <div>
+                <span
+                    class="material-symbols-outlined text-3xl text-white/50 hover:text-white cursor-pointer transition">flag</span>
+            </div>
+        </div>
+
+        <!-- Branding Overlay (Animated Intro) -->
+        <div id="brandingOverlay"
+            class="hidden absolute inset-0 z-[2200] bg-black flex items-center justify-center pointer-events-none">
+            <div class="branding-logo-container">
+                <svg class="w-full h-full branding-logo" viewBox="0 0 120 120" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FF1F1F" />
+                            <stop offset="100%" style="stop-color:#B20710" />
+                        </linearGradient>
+                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                            <feMerge>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <!-- Modern Abstract 'C' constructed from dynamic arcs -->
+                    <g filter="url(#glow)">
+                        <!-- Outer Arc -->
+                        <path
+                            d="M60 10 C32.3858 10 10 32.3858 10 60 C10 87.6142 32.3858 110 60 110 C80.5 110 98 98 105.5 80"
+                            stroke="url(#brandGradient)" stroke-width="12" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <!-- Inner Accent / Play Triangle hint -->
+                        <path d="M60 40 L90 60 L60 80 V40 Z" fill="white" stroke="url(#brandGradient)" stroke-width="4"
+                            stroke-linejoin="round" />
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Loading Spinner (Shown after branding if still buffering) -->
+        <div id="playerLoading" class="absolute z-50 flex flex-col items-center pointer-events-none hidden">
+            <div class="netflix-spinner"></div>
+            <!-- Removed Text as requested -->
+        </div>
+
+        <!-- Buffering State (Shown during seek) -->
+        <div id="bufferingSpinner" class="hidden absolute z-40 pointer-events-none">
+            <div class="netflix-spinner"></div>
+        </div>
+
+        <!-- Video Area -->
+        <div id="videoContainer"
+            class="relative w-full h-full flex items-center justify-center bg-black transition-opacity duration-500 opacity-0">
+            <video id="videoPlayer" class="w-full h-full object-contain focus:outline-none"></video>
+
+            <!-- Click Overlay for Play/Pause -->
+            <div class="absolute inset-0 z-10" onclick="togglePlayPause()"></div>
+
+            <!-- Controls Overlay (Bottom) -->
+            <div id="controlsOverlay"
+                class="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-32 bg-gradient-to-t from-black/90 via-black/60 to-transparent z-[100] opacity-0 [.show-controls_&]:opacity-100 transition-opacity duration-300 flex flex-col justify-end pointer-events-none">
+
+                <!-- Progress Container -->
+                <div class="pointer-events-auto w-full mb-4 group/timeline relative">
+                    <!-- Time Tooltip -->
+                    <div id="timeTooltip"
+                        class="absolute bottom-6 -translate-x-1/2 bg-zinc-800 text-white text-xs font-bold py-1 px-2 rounded shadow-lg opacity-0 transition-opacity pointer-events-none z-20">
+                        00:00</div>
+
+                    <div id="progressContainer"
+                        class="relative w-full h-1.5 bg-gray-600/50 rounded-sm cursor-pointer flex items-center hover:h-2.5 transition-all duration-200">
+                        <!-- Play Progress -->
+                        <div id="progressBar" class="h-full bg-netflix-red rounded-l-sm relative" style="width: 0%">
+                            <div
+                                class="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-netflix-red rounded-full scale-0 group-hover/timeline:scale-100 transition-transform shadow-md">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="pointer-events-auto flex items-center justify-between">
+                    <!-- Left Controls -->
+                    <div class="flex items-center gap-6">
+                        <button id="playPauseBtn" onclick="togglePlayPause()"
+                            class="text-white hover:text-netflix-red transition-colors transform active:scale-95">
+                            <span class="material-symbols-outlined text-[40px]">play_arrow</span>
+                        </button>
+
+                        <button onclick="skipTime(-10)"
+                            class="text-white/80 hover:text-white transition group relative flex flex-col items-center px-2">
+                            <span class="material-symbols-outlined text-[32px]">replay_10</span>
+                        </button>
+
+                        <button onclick="skipTime(10)"
+                            class="text-white/80 hover:text-white transition group relative flex flex-col items-center px-2">
+                            <span class="material-symbols-outlined text-[32px]">forward_10</span>
+                        </button>
+
+                        <!-- Volume -->
+                        <div class="flex items-center gap-2 group/volume ml-2">
+                            <button id="muteBtn" onclick="toggleMute()"
+                                class="text-white/80 hover:text-white transition">
+                                <span class="material-symbols-outlined text-[32px]">volume_up</span>
+                            </button>
+                            <input type="range" id="volumeSlider" min="0" max="100" value="100"
+                                onchange="changeVolume(this.value)"
+                                class="w-0 overflow-hidden group-hover/volume:w-24 transition-all duration-300 h-1 bg-gray-500 rounded-lg appearance-none cursor-pointer accent-netflix-red custom-slider">
+                        </div>
+                    </div>
+
+                    <!-- Right Controls -->
+                    <div class="flex items-center gap-6">
+                        <span id="timeDisplay" class="text-sm text-gray-300 font-medium font-mono">0:00</span>
+
+                        <button class="text-white/80 hover:text-white transition" title="Next Episode">
+                            <span class="material-symbols-outlined text-[32px]">skip_next</span>
+                        </button>
+
+                        <button class="text-white/80 hover:text-white transition relative group/settings"
+                            title="Settings">
+                            <span class="material-symbols-outlined text-[32px]">settings</span>
+                            <!-- Quality Menu -->
+                            <div id="qualityMenu"
+                                class="absolute bottom-12 right-[-20px] bg-zinc-900 border border-zinc-700 rounded-lg py-2 hidden flex-col w-32 shadow-xl z-50">
+                                <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-700 mb-1">QUALITY</div>
+                                <div id="qualityList">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </button>
+
+                        <button onclick="toggleFullscreen()"
+                            class="text-white/80 hover:text-white transition transform active:scale-110">
+                            <span class="material-symbols-outlined text-[32px]">fullscreen</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-black/90 text-gray-400 py-12 text-sm mt-12 border-t border-gray-800 z-10 relative">
+        <div class="max-w-5xl mx-auto px-[4%]">
+            <div class="flex gap-4 mb-8">
+                <a href="#" class="text-white text-2xl font-bold">CINEVERSE</a>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+                <ul class="space-y-3">
+                    <li><a href="#" class="hover:underline">Audio Description</a></li>
+                    <li><a href="#" class="hover:underline">Investor Relations</a></li>
+                    <li><a href="#" class="hover:underline">Legal Notices</a></li>
+                </ul>
+                <ul class="space-y-3">
+                    <li><a href="#" class="hover:underline">Help Center</a></li>
+                    <li><a href="#" class="hover:underline">Jobs</a></li>
+                    <li><a href="#" class="hover:underline">Cookie Preferences</a></li>
+                </ul>
+                <ul class="space-y-3">
+                    <li><a href="#" class="hover:underline">Gift Cards</a></li>
+                    <li><a href="#" class="hover:underline">Terms of Use</a></li>
+                    <li><a href="#" class="hover:underline">Corporate Information</a></li>
+                </ul>
+                <ul class="space-y-3">
+                    <li><a href="#" class="hover:underline">Media Center</a></li>
+                    <li><a href="#" class="hover:underline">Privacy</a></li>
+                    <li><a href="#" class="hover:underline">Contact Us</a></li>
+                </ul>
+            </div>
+            <div>
+                <button class="border border-gray-400 px-4 py-1 hover:text-white mb-4 text-xs">Service Code</button>
+                <div class="text-[11px]">&copy; 2025 CineVerse, Inc.</div>
+            </div>
+        </div>
+    </footer>
+
+</div> <!-- End Main Content Wrapper -->
+
+
+<script>
+    // Search Logic
+    const searchBox = document.getElementById('searchBox');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    let searchDebounce;
+
+    // --- DISCLAIMER LOGIC ---
+    window.addEventListener('load', () => {
+        const hasSeenDisclaimer = localStorage.getItem('hasSeenDisclaimer_v1');
+        if (!hasSeenDisclaimer) {
+            const modal = document.getElementById('disclaimerModal');
+            const modalContent = modal.querySelector('div'); // The inner container
+
+            // Slight delay for smooth entrance
+            setTimeout(() => {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+                document.body.style.overflow = 'hidden'; // Prevent scrolling
+            }, 500);
+        }
+    });
+
+    function acceptDisclaimer() {
+        const modal = document.getElementById('disclaimerModal');
+        const modalContent = modal.querySelector('div');
+
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modalContent.classList.remove('scale-100');
+        modalContent.classList.add('scale-95');
+        document.body.style.overflow = '';
+
+        localStorage.setItem('hasSeenDisclaimer_v1', 'true');
+    }
+
+    function toggleSearch() {
+        searchBox.classList.toggle('active');
+        if (searchBox.classList.contains('active')) {
+            searchInput.focus();
+        }
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchDebounce);
+        const query = e.target.value.trim();
+
+        if (query.length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        searchDebounce = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    searchResults.innerHTML = data.results.slice(0, 5).map(item => `
+                            <div class="search-result-item" onclick="openItemFromSearch('${item.title.replace(/'/g, "\\'")}', '${item.image}', ${item.isMovie})">
+                                <img src="${item.image}" onerror="this.src='https://via.placeholder.com/50x75'">
+                                <div>
+                                    <div class="text-sm font-bold text-white">${item.title}</div>
+                                    <div class="text-xs text-gray-400">${item.year} • ${item.isMovie ? 'Movie' : 'TV Series'}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    searchResults.style.display = 'flex';
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            } catch (e) {
+                console.error("Search error", e);
+            }
+        }, 300);
+    });
+
+    // Close search on click outside
+    document.addEventListener('click', (e) => {
+        if (!searchBox.contains(e.target)) {
+            searchBox.classList.remove('active');
+            searchResults.style.display = 'none';
+        }
+    });
+
+    // Enter key to go to search page
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const query = searchInput.value.trim();
+            if (query) {
+                window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            }
+        }
+    });
+
+    function openItemFromSearch(title, image, isMovie) {
+        searchResults.style.display = 'none';
+        if (isMovie) {
+            openMovieModal(title, image);
+        } else {
+            openTVModal(title, image);
+        }
+    }
+
+    // Main App Logic
+    let currentMovieData = null;
+    let allMovies = [];
+    let globalData = null;
+    let bannerItems = [];
+    let currentBannerIndex = 0;
+    let bannerInterval;
+
+    // Header Scroll Effect
+    window.addEventListener('scroll', () => {
+        const header = document.getElementById('mainHeader');
+        if (window.scrollY > 50) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
+        }
+    });
+
+    function toggleSidebar() {
+        document.getElementById('mainSidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+
+    function toggleMiniSidebar() {
+        document.body.classList.toggle('mini-sidebar');
+        document.getElementById('mainSidebar').classList.toggle('minified');
+    }
+
+    // --- NAVIGATION & ROUTING ---
+
+    // 1. Handle Back/Forward Browser Buttons
+    window.addEventListener('popstate', (event) => {
+        const category = getPageCategory();
+        setActiveNav();
+        if (globalData) {
+            renderContentForCategory(category, globalData);
+        } else {
+            window.location.reload(); // Fallback if no data
+        }
+    });
+
+    // 2. Handle Sidebar Clicks (SPA Navigation)
+    function handleNavClick(event, category, path) {
+        event.preventDefault();
+
+        // Update URL
+        history.pushState({ category: category }, "", path);
+
+        // Update UI
+        setActiveNav();
+
+        // Render Content
+        if (globalData) {
+            // If on mobile, close sidebar
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'instant' });
+
+            renderContentForCategory(category, globalData);
+        }
+    }
+
+    function getPageCategory() {
+        const path = window.location.pathname;
+        if (path.includes('/movies')) return 'movie';
+        if (path.includes('/tv')) return 'tv';
+        if (path.includes('/animation')) return 'animation';
+        return 'home';
+    }
+
+    function setActiveNav() {
+        const cat = getPageCategory();
+        // Remove active from all nav links
+        document.querySelectorAll('.nav-links a').forEach(el => el.classList.remove('active'));
+        // Set active on correct one
+        const id = cat === 'home' ? 'nav-home' : `nav-${cat}`;
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+    }
+
+    // --- BANNER CAROUSEL ---
+    function startBannerCarousel() {
+        if (bannerItems.length <= 1) return;
+
+        // Clear existing
+        if (bannerInterval) clearInterval(bannerInterval);
+
+        bannerInterval = setInterval(() => {
+            currentBannerIndex = (currentBannerIndex + 1) % bannerItems.length;
+            updateBanner(bannerItems[currentBannerIndex]);
+        }, 6000); // 6 seconds
+    }
+
+    function updateBanner(item) {
+        const banner = document.getElementById('banner');
+        const title = document.getElementById('banner-title');
+        const desc = document.getElementById('banner-desc');
+        const year = document.getElementById('banner-year');
+        const btnPlay = document.getElementById('banner-play');
+        const btnInfo = document.getElementById('banner-info');
+
+        // Preload image
+        const img = new Image();
+        img.src = item.image;
+        img.onload = () => {
+            banner.style.backgroundImage = `url('${item.image}')`;
+
+            // Fade effect for text could be added here, but simple update is okay
+            title.innerText = item.title;
+            if (desc) desc.innerText = item.description || "Exciting new content.";
+            if (year) year.innerText = item.year || "2024";
+
+            btnPlay.onclick = () => {
+                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image);
+            };
+
+            btnInfo.onclick = () => {
+                item.isMovie === false ? openTVModal(item.title, item.image) : openMovieModal(item.title, item.image);
+            };
+        };
+    }
+
+    async function fetchHome() {
+        setActiveNav();
+        const category = getPageCategory();
+
+        try {
+            // 1. Fetch Critical Content (Banner + Top 2 Rows)
+            console.time('fetch-init');
+            const responseInit = await fetch('/api/home?mode=init');
+            const dataInit = await responseInit.json();
+            console.timeEnd('fetch-init');
+
+            // Initialize Global Data with partial content
+            globalData = { sections: dataInit.sections || [] };
+
+            // Helper to process data chunk
+            const processData = (chunkData) => {
+                if (chunkData.sections) {
+                    chunkData.sections.forEach(section => {
+                        if (section.items) allMovies.push(...section.items);
+                    });
+                }
+            };
+            processData(dataInit);
+
+            // Setup Banner (from Init data)
+            if (dataInit.sections && dataInit.sections.length > 0) {
+                const bannerSec = dataInit.sections.find(s => s.type === 'banner');
+                if (bannerSec && bannerSec.items) {
+                    bannerItems = bannerSec.items.slice(0, 5);
+                } else {
+                    bannerItems = allMovies.slice(0, 5);
+                }
+            }
+
+            if (bannerItems.length > 0) {
+                updateBanner(bannerItems[0]);
+                startBannerCarousel();
+            }
+
+            // Render First Chunk Immediately
+            renderContentForCategory(category, dataInit);
+
+            // 2. Fetch Remaining Content (Background)
+            // Small delay to let the browser paint the first chunk and handle interactions
+            setTimeout(async () => {
+                try {
+                    console.time('fetch-rest');
+                    const responseMore = await fetch('/api/home?mode=more');
+                    const dataMore = await responseMore.json();
+                    console.timeEnd('fetch-rest');
+
+                    if (dataMore.sections && dataMore.sections.length > 0) {
+                        // Merge into global data
+                        globalData.sections = [...globalData.sections, ...dataMore.sections];
+                        processData(dataMore);
+
+                        // Append the rest
+                        // Note: renderContentForCategory calls render(), which now handles chunking
+                        // We pass only the NEW data to avoid re-rendering the top rows
+                        // But wait, renderContentForCategory clears #app unless specific conditions met.
+                        // Actually, render() clears #app if it sees text-center.
+                        // If we call renderContentForCategory(category, dataMore) it will try to render 'more' sections.
+                        // But render() handles appending if the skeleton is gone.
+                        // Let's call renderContentForCategory but we need to tell it NOT to wipe.
+
+                        // Since `render` logic is robust now:
+                        // If we pass just the new sections, it will append them.
+                        renderContentForCategory(category, dataMore, true);
+                    }
+                } catch (err) {
+                    console.error('Error fetching secondary content:', err);
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('app').innerHTML = '<h2 class="text-center text-2xl mt-10">Failed to load content.</h2>';
+        }
+    }
+
+    function renderContentForCategory(category, data, append = false) {
+        // 1. Reset App Container
+        const app = document.getElementById('app');
+        if (!append) {
+            app.innerHTML = '';
+        }
+
+        // 2. Filter Content Sections & Banner Items
+        const filteredSections = [];
+        let filteredBannerItems = [];
+
+        // Helper to check match
+        const isMatch = (item) => {
+            if (category === 'home') return true;
+            if (category === 'movie' && item.isMovie === true) return true;
+            if (category === 'tv' && item.isMovie === false) return true;
+            if (category === 'animation') {
+                const g = item.genre || [];
+                const t = (item.title || '').toLowerCase();
+                const isAnim = g.some(gen => typeof gen === 'string' && gen.toLowerCase().includes('animation')) || t.includes('animation');
+                if (isAnim) return true;
+            }
+            return false;
+        };
+
+        data.sections.forEach(section => {
+            const newSection = { ...section, items: [] };
+            if (section.items) {
+                section.items.forEach(item => {
+                    if (isMatch(item)) {
+                        newSection.items.push(item);
+                    }
+                });
+            }
+            if (newSection.items.length > 0) filteredSections.push(newSection);
+        });
+
+        // 3. Filter Banner Logic
+        // We use 'allMovies' which contains everything flattened, to find good banner candidates for this category
+        filteredBannerItems = allMovies.filter(item => isMatch(item));
+
+        // If we have specific banner items from the API (top 5), we can try to respect those first if they match
+        // But usually taking top 5 filtered results is better for specific pages
+        if (filteredBannerItems.length > 0) {
+            // Shuffle slightly or just take top 5
+            bannerItems = filteredBannerItems.slice(0, 8);
+            currentBannerIndex = 0;
+            updateBanner(bannerItems[0]);
+            startBannerCarousel();
+        }
+
+        // 4. Handle Empty State
+        if (filteredSections.length === 0) {
+            app.innerHTML = `<div class="text-center py-20 text-gray-400">No content found for ${category}.</div>`;
+            return;
+        }
+
+        // 5. Render Sections
+        render({ sections: filteredSections });
+    }
+
+    // Intersection Observer for Lazy Rendering Rows
+    const rowObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const rowWrapper = entry.target;
+                const items = rowWrapper._items;
+                if (items) {
+                    populateRow(rowWrapper, items);
+                    rowWrapper._items = null; // Free memory
+                }
+                observer.unobserve(rowWrapper);
+            }
+        });
+    }, { rootMargin: '400px' }); // Load 400px before appearing for smoothness
+
+    // Function to build DOM for a single row
+    function populateRow(rowWrapper, items) {
+        // Left Btn
+        const leftBtn = document.createElement('button');
+        leftBtn.className = 'absolute left-0 top-0 bottom-0 w-[4%] bg-black/50 z-20 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 text-white hover:bg-black/80 rounded-r';
+        leftBtn.innerHTML = '<span class="material-symbols-outlined text-4xl">chevron_left</span>';
+        leftBtn.onclick = () => {
+            const row = rowWrapper.querySelector('.overflow-x-auto');
+            if (row) row.scrollBy({ left: -window.innerWidth * 0.7, behavior: 'smooth' });
+        };
+
+        // Right Btn
+        const rightBtn = document.createElement('button');
+        rightBtn.className = 'absolute right-0 top-0 bottom-0 w-[4%] bg-black/50 z-20 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 text-white hover:bg-black/80 rounded-l';
+        rightBtn.innerHTML = '<span class="material-symbols-outlined text-4xl">chevron_right</span>';
+        rightBtn.onclick = () => {
+            const row = rowWrapper.querySelector('.overflow-x-auto');
+            if (row) row.scrollBy({ left: window.innerWidth * 0.7, behavior: 'smooth' });
+        };
+
+        // Row Container
+        const row = document.createElement('div');
+        row.className = 'flex overflow-x-auto gap-3 py-2 scroll-smooth scrollbar-hide animate-fade-in';
+        // Hardware accelerate scroll
+        row.style.willChange = 'scroll-position';
+
+        items.forEach(movie => {
+            const card = document.createElement('div');
+            // Optimized Card: removed blur, added will-change, added marker class
+            card.className = 'movie-card-item min-w-[160px] md:min-w-[220px] aspect-[2/3] relative rounded-md overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.02] hover:z-10 bg-zinc-800 will-change-transform';
+            card.onclick = () => movie.isMovie === false ? openTVModal(movie.title, movie.image) : openMovieModal(movie.title, movie.image);
+
+            // Attach data directly to DOM element for delegation (Zero overhead compared to closures)
+            card._movieData = movie;
+
+            // Optimized Badge: No backdrop-blur, solid semi-transparent bg is faster
+            const hdBadge = '<div class="absolute top-2 right-2 bg-black/80 border border-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold text-white/90">HD</div>';
+
+            card.innerHTML = `
+                     <img src="${movie.image}" class="w-full h-full object-cover" loading="lazy" decoding="async" onload="this.style.opacity=1" style="opacity:0; transition: opacity 0.4s ease-in;">
+                     <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3 pointer-events-none">
+                         <h3 class="text-sm font-bold text-white leading-tight mb-1">${movie.title}</h3>
+                         <div class="flex items-center gap-2 text-[10px] text-gray-300">
+                             <span class="text-green-400 font-bold">96% Match</span>
+                             <span>${movie.isMovie ? 'Movie' : 'TV'}</span>
+                         </div>
+                     </div>
+                     ${hdBadge}
+                 `;
+
+            row.appendChild(card);
+        });
+
+        rowWrapper.appendChild(leftBtn);
+        rowWrapper.appendChild(row);
+        rowWrapper.appendChild(rightBtn);
+
+        // Remove placeholder styling
+        rowWrapper.style.minHeight = '0';
+    }
+
+    // Global Event Delegation for Performance
+    // Instead of 1000 listeners, we use 1.
+    document.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.movie-card-item');
+        if (card && card._movieData) {
+            startHoverTimer(e, card._movieData, card);
+        }
+    }, { passive: true });
+
+    document.addEventListener('mouseout', (e) => {
+        const card = e.target.closest('.movie-card-item');
+        if (card) {
+            cancelHoverTimer(e);
+        }
+    }, { passive: true });
+
+    function render(data) {
+        const app = document.getElementById('app');
+        const skeleton = document.getElementById('homeSkeleton');
+        if (skeleton) skeleton.remove();
+
+        if (app.querySelector('.text-center')) app.innerHTML = '';
+
+        if (!data.sections) return;
+
+        const gridSections = data.sections.filter(s => s.type !== 'banner');
+
+        gridSections.forEach((section, index) => {
+            // 1. Render Title Immediately (User request: title loaded)
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'px-[4%] mb-3 mt-8 group/title flex items-end justify-between';
+            titleDiv.innerHTML = `
+                    <h2 class="text-xl md:text-2xl font-bold text-white group-hover/title:text-red-500 transition-colors cursor-pointer">
+                        ${section.title}
+                    </h2>
+                    <div class="text-xs font-bold text-gray-500 cursor-pointer hover:text-white transition">VIEW ALL</div>
+                `;
+            app.appendChild(titleDiv);
+
+            // 2. Create Wrapper for Row
+            const rowWrapper = document.createElement('div');
+            rowWrapper.className = 'group relative mb-8 px-[4%] transition-opacity duration-500';
+            rowWrapper._items = section.items;
+
+            app.appendChild(rowWrapper);
+
+            // 3. First 2 rows load instantly, others lazy load on scroll
+            if (index < 2) {
+                populateRow(rowWrapper, section.items);
+            } else {
+                // Set min-height so the scrollbar exists and intersection works
+                rowWrapper.style.minHeight = '250px';
+                rowObserver.observe(rowWrapper);
+            }
+        });
+    }
+
+    // Hover Card Logic
+    let hoverTimer;
+    let activeHoverData = null;
+    const hoverCard = document.getElementById('hoverCard');
+
+    function startHoverTimer(e, movie, cardElement) {
+        // Cancel any existing timer
+        clearTimeout(hoverTimer);
+
+        // Start new timer - 1.5 seconds delay (User requested 2-3s, but 1.5 feels better. 2000ms = 2s)
+        hoverTimer = setTimeout(() => {
+            showHoverCard(cardElement, movie);
+        }, 1000);
+    }
+
+    function cancelHoverTimer(e) {
+        clearTimeout(hoverTimer);
+        // We do NOT hide the card immediately here if we are moving TO the card
+        // But if we leave the card element, we check if we entered the hoverCard itself
+        // The hoverCard has onmouseleave="hideHoverCard()"
+    }
+
+    function showHoverCard(cardElement, movie) {
+        // Disable hover card on mobile
+        if (window.innerWidth <= 768) return;
+
+        activeHoverData = movie;
+        const rectifier = cardElement.getBoundingClientRect();
+
+        // Calculate absolute position on document
+        // Fixed Logic: Ensure it doesn't overflow right edge
+        let top = rectifier.top + window.scrollY;
+        let left = rectifier.left + window.scrollX;
+        let width = rectifier.width;
+        let height = rectifier.height;
+
+        const cardWidth = 300; // Expanded width approx
+        const cardHeight = 350; // Expanded height approx
+
+        // Adjust position for scale effect center
+        // We want the card to center on the original rect
+        const centerX = left + (width / 2);
+        const centerY = top + (height / 2);
+
+        // New Top/Left to center the scaled card
+        // But we actually just render the portal there.
+        // The hover card CSS has fixed width/height usually? 
+        // Let's rely on the portal being absolutely positioned at the thumbnail's spot, 
+        // then scaling up.
+
+        // Actually, best to place it exactly covering the thumbnail first
+
+        // Edge detection
+        if (left + width * 1.5 > window.innerWidth) {
+            // If too close to right edge, shift left
+            // left -= 50; 
+        }
+
+        hoverCard.style.top = `${top}px`;
+        hoverCard.style.left = `${left}px`;
+        hoverCard.style.width = `${width}px`;
+        hoverCard.style.height = `${height}px`; // Match height exactly for smooth start
+
+        hoverCard.style.display = 'flex';
+
+        // Update Content
+        document.getElementById('hcImage').src = movie.image || '';
+        document.getElementById('hcTitle').innerText = movie.title;
+        document.getElementById('hcType').innerText = movie.isMovie ? "Movie" : "TV Series";
+
+        // Random Genres
+        const genres = ["Action", "Sci-Fi", "Drama", "Thriller", "Adventure", "Crime", "Mystery"];
+        const randomGenres = genres.sort(() => 0.5 - Math.random()).slice(0, 3).join(' <span class="text-white/40">•</span> ');
+        document.getElementById('hcGenres').innerHTML = randomGenres;
+
+        // --- CENTERED EXPANSION LOGIC ---
+        // We want the card to stay centered on the original but grow larger.
+        // Since we use transform: scale(1.4), the CSS handles the visual size.
+        // We just need to set the specific base dimensions to match the thumbnail.
+
+        hoverCard.style.top = `${top}px`;
+        hoverCard.style.left = `${left}px`;
+        hoverCard.style.width = `${width}px`;
+        hoverCard.style.height = `${height}px`; // Match height exactly
+
+        hoverCard.style.display = 'flex';
+
+        // Force reflow
+        void hoverCard.offsetWidth;
+
+        hoverCard.classList.add('active');
+    }
+
+    function hideHoverCard() {
+        hoverCard.classList.remove('active');
+        setTimeout(() => {
+            if (!hoverCard.classList.contains('active')) {
+                hoverCard.style.display = 'none';
+            }
+        }, 300); // Wait for transition
+    }
+
+    function playFromHoverCard() {
+        if (!activeHoverData) return;
+        hideHoverCard();
+        if (activeHoverData.isMovie) {
+            openMovieModal(activeHoverData.title, activeHoverData.image);
+        } else {
+            openTVModal(activeHoverData.title, activeHoverData.image);
+        }
+    }
+
+    function detailsFromHoverCard() {
+        playFromHoverCard(); // Same action for now
+    }
+
+    // Close hover card if clicking outside
+    /*
+    document.addEventListener('click', (e) => {
+         if (hoverCard.style.display !== 'none' && !hoverCard.contains(e.target)) {
+             hideHoverCard();
+         }
+    }); 
+    */
+
+
+
+
+    async function openTVModal(title, imageUrl) {
+        const modal = document.getElementById('movieModal');
+        const modalBody = document.getElementById('modalBody');
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+
+        // Premium Skeleton Loader - Responsive for Mobile & Desktop
+        modalBody.innerHTML = `
+                <!-- MOBILE SKELETON (Quick View Style) -->
+                <div class="mobile-quick-view animate-pulse">
+                    <!-- Video Preview Skeleton -->
+                    <div class="aspect-video bg-gray-800 w-full"></div>
+                    
+                    <!-- Title Skeleton -->
+                    <div class="p-4">
+                        <div class="h-6 bg-gray-700 rounded w-3/4 mb-3"></div>
+                        <div class="flex gap-2 mb-4">
+                            <div class="h-4 bg-gray-800 rounded w-12"></div>
+                            <div class="h-4 bg-gray-800 rounded w-16"></div>
+                            <div class="h-4 bg-gray-800 rounded w-20"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons Skeleton -->
+                    <div class="flex gap-2 px-4 pb-4">
+                        <div class="h-10 bg-gray-800 rounded-full w-28"></div>
+                        <div class="h-10 bg-gray-800 rounded-full w-20"></div>
+                        <div class="h-10 bg-gray-800 rounded-full w-24"></div>
+                    </div>
+                    
+                    <!-- Episodes Section Skeleton -->
+                    <div class="px-4 py-3 border-t border-gray-800">
+                        <div class="h-5 bg-gray-700 rounded w-24 mb-4"></div>
+                        <div class="h-9 bg-gray-800 rounded w-28 mb-4"></div>
+                        <div class="flex gap-2">
+                            ${Array(8).fill(0).map(() => `<div class="h-9 w-11 bg-gray-800 rounded flex-shrink-0"></div>`).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- For You Section Skeleton -->
+                    <div class="px-4 py-4 border-t border-gray-800">
+                        <div class="flex gap-4 mb-4">
+                            <div class="h-5 bg-gray-700 rounded w-16"></div>
+                            <div class="h-5 bg-gray-800 rounded w-20"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            ${Array(6).fill(0).map(() => `<div class="aspect-[2/3] bg-gray-800 rounded"></div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DESKTOP SKELETON (Hidden on Mobile) -->
+                <div class="animate-pulse hidden md:block">
+                    <div class="h-[400px] w-full bg-gray-800 rounded-t-lg mb-8 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#141414] to-transparent"></div>
+                    </div>
+                    <div class="px-8 -mt-20 relative z-10">
+                         <div class="h-12 w-3/4 bg-gray-700 rounded mb-4"></div>
+                         <div class="flex gap-4 mb-6">
+                             <div class="h-6 w-20 bg-gray-700 rounded"></div>
+                             <div class="h-6 w-16 bg-gray-700 rounded"></div>
+                         </div>
+                         <div class="grid grid-cols-[2fr,1fr] gap-8">
+                             <div class="space-y-4">
+                                 <div class="h-4 bg-gray-800 rounded w-full"></div>
+                                 <div class="h-4 bg-gray-800 rounded w-5/6"></div>
+                                 <div class="h-4 bg-gray-800 rounded w-4/6"></div>
+                             </div>
+                             <div class="space-y-3">
+                                 <div class="h-4 bg-gray-800 rounded w-full"></div>
+                                 <div class="h-4 bg-gray-800 rounded w-3/4"></div>
+                             </div>
+                         </div>
+                         <div class="mt-10">
+                            <div class="h-8 w-32 bg-gray-700 rounded mb-6"></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                ${Array(6).fill(0).map(() => `
+                                    <div class="aspect-video bg-gray-800 rounded-lg"></div>
+                                `).join('')}
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            `;
+
+        try {
+            // Fetch details AND prefetch first episode stream URL in parallel
+            const detailsPromise = fetch(`/api/tv_details/${encodeURIComponent(title)}`);
+
+            const response = await detailsPromise;
+            const details = await response.json();
+
+            if (details.error) {
+                modalBody.innerHTML = `<div class="p-10 text-center">${details.error}</div>`;
+                return;
+            }
+
+            currentTVData = details;
+            currentSeason = 1;
+
+            // Start prefetching first episode stream URL NOW (don't wait)
+            const streamUrlPromise = fetch(`/api/tv_stream_url/${encodeURIComponent(title)}/1/1`);
+            currentTVData.prefetchedStreamUrl = streamUrlPromise;
+
+            const seasonTabs = details.seasons.map((s, i) =>
+                `<button class="px-5 py-2 rounded-full text-sm font-bold transition-all border border-white/10 whitespace-nowrap ${i === 0 ? 'bg-netflix-red text-white border-transparent' : 'bg-[#222] text-gray-400 hover:bg-[#333] hover:text-white'}" onclick="changeSeason(${i}, this)">Season ${s.seasonNumber}</button>`
+            ).join('');
+
+            const episodesHTML = buildEpisodesHTML(details.seasons[0]?.episodes || []);
+
+            // Generate episode pills for mobile
+            const episodePills = (details.seasons[0]?.episodes || []).map((ep, idx) =>
+                `<button class="episode-pill ${idx === 0 ? 'active' : ''}" onclick="selectEpisodePill(${ep.episodeNumber}, this)">${ep.episodeNumber.toString().padStart(2, '0')}</button>`
+            ).join('');
+
+            // For You recommendations
+            const forYouItems = allMovies
+                .filter(m => m.title !== details.title)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 6);
+
+            const forYouHTML = forYouItems.map(m => `
+                <div class="for-you-card" onclick="openTVModal('${m.title.replace(/'/g, "\\'")}', '${m.image}')">
+                    <img src="${m.image}" alt="${m.title}">
+                    <span class="lang-badge">Hindi</span>
+                </div>
+            `).join('');
+
+            modalBody.innerHTML = `
+                    <!-- ============================================ -->
+                    <!-- MOBILE QUICK VIEW (New App-Like Design) -->
+                    <!-- ============================================ -->
+                    <div class="mobile-quick-view">
+                        <!-- Back Button -->
+                        <button class="mobile-back-btn fixed top-3 left-3 z-50 bg-black/60 backdrop-blur-sm text-white w-10 h-10 rounded-full flex items-center justify-center" onclick="closeModal()">
+                            <span class="material-symbols-outlined">arrow_back</span>
+                        </button>
+
+                        <!-- Video Preview / Inline Player Area -->
+                        <div class="video-preview" id="mobileVideoArea">
+                            <!-- Premium SVG Buffering Spinner -->
+                            <div id="mobileLoadingSpinner" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                                <div class="video-spinner-container">
+                                    <svg class="video-spinner-svg" viewBox="0 0 50 50">
+                                        <circle class="spinner-track" cx="25" cy="25" r="20"></circle>
+                                        <circle class="spinner-progress" cx="25" cy="25" r="20"></circle>
+                                    </svg>
+                                </div>
+                            </div>
+                            <!-- Tap to Play/Pause Overlay (only covers video area, not controls at bottom) -->
+                            <div class="absolute top-0 left-0 right-0 bottom-12 z-[15]" onclick="toggleMobilePlay(event)"></div>
+                            <!-- Inline Video Player -->
+                            <video id="mobileInlinePlayer" class="w-full h-full object-cover" playsinline></video>
+                            <!-- Inline Controls -->
+                            <div id="mobilePlayerControls" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-3 z-[25]">
+                                <div class="flex items-center gap-3" onclick="event.stopPropagation()">
+                                    <button onclick="toggleMobilePlay(event); event.stopPropagation();" class="text-white">
+                                        <span class="material-symbols-outlined" id="mobilePlayIcon">play_arrow</span>
+                                    </button>
+                                    <div class="flex-1 h-2 bg-white/30 rounded-full overflow-hidden cursor-pointer relative" onclick="event.stopPropagation(); seekMobilePlayer(event);">
+                                        <div id="mobileProgressBar" class="h-full bg-red-600 rounded-full pointer-events-none" style="width: 0%"></div>
+                                    </div>
+                                    <span id="mobileTimeDisplay" class="text-white text-xs" onclick="event.stopPropagation()">0:00/0:00</span>
+                                    <!-- Settings Button -->
+                                    <button onclick="event.stopPropagation(); toggleMobileSettings(event);" class="text-white">
+                                        <span class="material-symbols-outlined">settings</span>
+                                    </button>
+                                    <button onclick="event.stopPropagation(); toggleMobileFullscreen(event);" class="text-white">
+                                        <span class="material-symbols-outlined">fullscreen</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Settings Menu (Quality) -->
+                            <div id="mobileSettingsMenu" class="hidden absolute bottom-14 right-3 bg-black/90 backdrop-blur-sm rounded-lg p-2 z-30 min-w-[120px]" onclick="event.stopPropagation()">
+                                <div class="text-xs text-gray-400 px-2 py-1">Quality</div>
+                                <div id="mobileQualityList" class="space-y-1">
+                                    <!-- Quality options will be added here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Title Row -->
+                        <div class="title-row">
+                            <div class="title">${details.title}</div>
+                            <button class="info-btn" onclick="openBottomSheet()">
+                                Info <span class="material-symbols-outlined" style="font-size: 16px;">chevron_right</span>
+                            </button>
+                        </div>
+
+                        <!-- Meta Row -->
+                        <div class="meta-row">
+                            <span class="badge">TV</span>
+                            <span class="rating">⭐ ${details.rating || 'N/A'}</span>
+                            <span>${details.year}</span>
+                            <span>${details.country || ''}</span>
+                            <span>${details.genre ? details.genre.slice(0, 2).join(' • ') : ''}</span>
+                            <span>${details.seasons.length} seasons</span>
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div class="action-bar">
+                            <button onclick="alert('Added to list!')">
+                                <span class="material-symbols-outlined">playlist_add</span> Add to list
+                            </button>
+                            <button onclick="navigator.share?.({title: '${details.title}', url: window.location.href})">
+                                <span class="material-symbols-outlined">share</span> Share
+                            </button>
+                            <button>
+                                <span class="material-symbols-outlined">download</span> Download
+                            </button>
+                        </div>
+
+                        <!-- Resources Section -->
+                        <div class="resources-section">
+                            <div class="section-title">Episodes</div>
+                            
+                            <!-- Season Dropdown -->
+                            <div class="dropdowns-row">
+                                <select class="dropdown-btn" onchange="changeSeason(this.value - 1, this)" id="mobileSeasonSelect">
+                                    ${details.seasons.map((s, i) => `<option value="${s.seasonNumber}" ${i === 0 ? 'selected' : ''}>Season ${s.seasonNumber}</option>`).join('')}
+                                </select>
+                            </div>
+
+                            <!-- Episode Pills -->
+                            <div class="episode-pills" id="mobileEpisodePills">
+                                <button class="episode-pill" onclick="selectEpisodePill('all', this)">All</button>
+                                ${episodePills}
+                            </div>
+                        </div>
+
+                        <!-- For You Section -->
+                        <div class="for-you-section">
+                            <div class="section-header">
+                                <button class="tab active">For you</button>
+                                <button class="tab">Comments</button>
+                            </div>
+                            <div class="for-you-grid">
+                                ${forYouHTML}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================ -->
+                    <!-- MOBILE BOTTOM SHEET (Details) -->
+                    <!-- ============================================ -->
+                    <div class="sheet-overlay" onclick="closeBottomSheet()"></div>
+                    <div class="mobile-bottom-sheet" id="mobileBottomSheet">
+                        <div class="sheet-header">
+                            <h3>More details</h3>
+                            <button class="close-btn" onclick="closeBottomSheet()">×</button>
+                        </div>
+                        <div class="content-row">
+                            <img class="poster" src="${imageUrl}" alt="${details.title}">
+                            <div class="info">
+                                <div class="title">${details.title}</div>
+                                <div class="meta">
+                                    <span class="rating">⭐ ${details.rating || 'N/A'}</span>
+                                    <span>${details.year}</span>
+                                    <span>${details.country || ''}</span>
+                                    <span>${details.genre ? details.genre.join(' • ') : ''}</span>
+                                    <span>${details.seasons.length} seasons</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <h4>Info</h4>
+                            <p>${details.description}</p>
+                        </div>
+                        <div class="starring-section">
+                            <h4>Starring (${details.actors?.length || 0})</h4>
+                            <div class="actors-scroll">
+                                ${(details.actors || []).slice(0, 10).map(actor => `
+                                    <div class="actor-card">
+                                        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(actor)}&background=333&color=fff&size=60" alt="${actor}">
+                                        <div class="name">${actor.split(' ')[0]}</div>
+                                        <div class="role">Actor</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================ -->
+                    <!-- DESKTOP VIEW (Hidden on Mobile) -->
+                    <!-- ============================================ -->
+                    <div class="modal-banner hide-mobile" style="background-image: url('${imageUrl}');">
+                        <div class="modal-banner-gradient"></div>
+                        <button class="modal-close" onclick="closeModal()">×</button>
+                    </div>
+                    
+                    <div class="modal-info hidden md:block">
+                        <h1 class="modal-title text-4xl font-bold mb-2">${details.title}</h1>
+                        <div class="modal-meta flex items-center gap-4 text-sm mb-4 text-gray-400">
+                            <span class="text-green-500 font-bold">${details.rating || 'N/A'} Match</span>
+                            <span>${details.year}</span>
+                            <span class="border border-gray-600 px-1 text-xs text-gray-400">HD</span>
+                            <span>${details.country || ''}</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-8 mb-10">
+                             <div>
+                                <h3 class="font-bold text-white mb-2 text-lg">Synopsis</h3>
+                                <p class="leading-relaxed text-gray-300 text-sm">${details.description}</p>
+                             </div>
+                             <div class="text-sm text-gray-500 space-y-2 bg-[#1a1a1a] p-4 rounded-lg border border-white/5">
+                                <div class="mb-1"><span class="text-gray-400 font-semibold block">Cast:</span> ${details.actors ? details.actors.slice(0, 5).join(', ') : 'N/A'}</div>
+                                <div><span class="text-gray-400 font-semibold block">Genres:</span> ${details.genre ? details.genre.join(', ') : 'N/A'}</div>
+                                ${details.directors?.length ? `<div><span class="text-gray-400 font-semibold block">Directors:</span> ${details.directors.join(', ')}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                        
+                    <div class="episodes-section border-t border-gray-800 pt-8 md:pt-8 md:mx-8 hidden md:block">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl md:text-2xl font-bold text-white">Episodes</h3>
+                            <div class="flex items-center gap-2 text-xs text-gray-500">
+                                <span class="material-symbols-outlined text-base">grid_view</span>
+                                <span>${details.seasons[0]?.episodes?.length || 0} Episodes</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Horizontal Season Tabs -->
+                        <div class="flex gap-3 overflow-x-auto scrollbar-hide mb-6 pb-2" id="seasonTabsContainer">
+                            ${seasonTabs}
+                        </div>
+
+                        <!-- New Grid Layout -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4" id="episodesList">
+                            ${episodesHTML}
+                        </div>
+                    </div>
+                `;
+
+            // Auto-play first episode on mobile (immediately, using prefetched URL)
+            if (window.innerWidth <= 768) {
+                playEpisodeInline(1);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function buildEpisodesHTML(episodes) {
+        return episodes.map((ep, idx) => `
+                <div class="group relative aspect-video bg-gray-800 rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-netflix-red transition-all duration-300 shadow-lg" onclick="playEpisode(${ep.episodeNumber})">
+                    <!-- Image -->
+                    <img src="${ep.image}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.src='https://via.placeholder.com/300x169?text=EP+${ep.episodeNumber}'">
+                    
+                    <!-- Overlay Gradient -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                    
+                    <!-- Top Badge -->
+                    <div class="absolute top-2 left-2 bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-2 py-1 rounded">
+                        EP ${ep.episodeNumber}
+                    </div>
+
+                    <!-- Center Play -->
+                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="w-12 h-12 bg-netflix-red rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(229,9,20,0.5)] transform scale-75 group-hover:scale-100 transition-transform">
+                             <span class="material-symbols-outlined text-2xl">play_arrow</span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Info -->
+                    <div class="absolute bottom-0 left-0 right-0 p-3 transform translate-y-1 group-hover:translate-y-0 transition-transform">
+                        <h4 class="text-white font-bold text-sm truncate leading-tight">${ep.title || 'Episode ' + ep.episodeNumber}</h4>
+                        <div class="flex items-center justify-between mt-1">
+                             <span class="text-[10px] text-gray-300">${ep.duration || '24m'}</span>
+                             <span class="material-symbols-outlined text-gray-400 text-sm hover:text-white">download</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    function getEpisodesSkeletonHTML() {
+        return Array(6).fill(0).map(() => `
+                <div class="aspect-video bg-gray-800 rounded-lg animate-pulse border border-white/5 relative overflow-hidden">
+                    <div class="absolute inset-x-0 bottom-0 h-16 bg-gray-700/50"></div>
+                </div>
+            `).join('');
+    }
+
+    function changeSeason(index, btnElement) {
+        // Update Tabs UI
+        const container = document.getElementById('seasonTabsContainer');
+        if (container) {
+            const buttons = container.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.className = "px-5 py-2 rounded-full text-sm font-bold transition-all border border-white/10 bg-[#222] text-gray-400 hover:bg-[#333] hover:text-white whitespace-nowrap";
+            });
+            // Highlight clicked
+            if (btnElement) {
+                btnElement.className = "px-5 py-2 rounded-full text-sm font-bold transition-all border border-transparent bg-netflix-red text-white shadow-lg transform scale-105 whitespace-nowrap";
+            }
+        }
+
+        // Show skeleton first
+        const list = document.getElementById('episodesList');
+        list.innerHTML = getEpisodesSkeletonHTML();
+
+        // Simulate small delay for premium feel
+        setTimeout(() => {
+            const season = currentTVData.seasons[index];
+            currentSeason = season.seasonNumber;
+            list.innerHTML = buildEpisodesHTML(season.episodes);
+        }, 500);
+    }
+
+
+
+    // ============================================
+    //  PLAYER LOGIC
+    // ============================================
+    const player = document.getElementById('videoPlayer');
+    const playerModal = document.getElementById('playerModal');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressContainer = document.getElementById('progressContainer');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const playerLoading = document.getElementById('playerLoading');
+    const playerTitle = document.getElementById('playerTitle');
+    const brandingOverlay = document.getElementById('brandingOverlay');
+    const videoContainer = document.getElementById('videoContainer');
+    let hideControlsTimeout;
+    let brandingTimeout;
+    let isPlayerOpening = false;
+
+    function playMovie() {
+        if (isPlayerOpening) return;
+        isPlayerOpening = true;
+
+        if (currentMovieData && currentMovieData.streamUrl) {
+            // Determine qualities if available, otherwise just use streamUrl
+            let qualities = currentMovieData.qualities || [];
+            // If qualities came empty from initial load (backward compat), we might need to fetch them
+            // But for now, let's assume openMovieModal fetches fresh data or we pass what we have
+
+            openPlayer(currentMovieData.title, currentMovieData.streamUrl, qualities);
+        }
+        setTimeout(() => { isPlayerOpening = false; }, 2000);
+    }
+
+    // Updated openItemFromSearch to fetch fresh details including qualities
+    async function openMovieModal(title, image) {
+        const modal = document.getElementById('movieModal');
+        const modalBody = document.getElementById('modalBody');
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+
+        modalBody.innerHTML = `
+                <!-- MOBILE SKELETON (Visible on Mobile) -->
+                <div class="animate-pulse md:hidden">
+                    <!-- Video Preview Skeleton -->
+                    <div class="w-full aspect-video bg-gray-800 relative">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="video-spinner-container">
+                                <svg class="video-spinner-svg" viewBox="0 0 50 50">
+                                    <circle class="spinner-track" cx="25" cy="25" r="20"></circle>
+                                    <circle class="spinner-progress" cx="25" cy="25" r="20"></circle>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Title Row Skeleton -->
+                    <div class="px-4 py-3">
+                        <div class="h-6 bg-gray-700 rounded w-3/4 mb-2"></div>
+                        <div class="flex gap-2">
+                            <div class="h-5 bg-gray-800 rounded w-14"></div>
+                            <div class="h-5 bg-gray-800 rounded w-10"></div>
+                            <div class="h-5 bg-gray-800 rounded w-20"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Bar Skeleton -->
+                    <div class="px-4 py-3 flex gap-3">
+                        ${Array(3).fill(0).map(() => `<div class="h-10 bg-gray-800 rounded flex-1"></div>`).join('')}
+                    </div>
+                    
+                    <!-- For You Section Skeleton -->
+                    <div class="px-4 py-4 border-t border-gray-800">
+                        <div class="flex gap-4 mb-4">
+                            <div class="h-5 bg-gray-700 rounded w-16"></div>
+                            <div class="h-5 bg-gray-800 rounded w-20"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            ${Array(6).fill(0).map(() => `<div class="aspect-[2/3] bg-gray-800 rounded"></div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DESKTOP SKELETON (Hidden on Mobile) -->
+                <div class="hidden md:block">
+                    <div class="modal-banner" style="background-image: url('${image}');">
+                        <div class="modal-banner-gradient"></div>
+                        <button class="modal-close" onclick="closeModal()">×</button>
+                    </div>
+                    
+                    <div class="modal-info animate-pulse">
+                        <!-- Title Skeleton -->
+                        <div class="h-8 md:h-12 bg-gray-800 rounded w-1/2 mb-4"></div>
+                        
+                        <!-- Meta Skeleton -->
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="h-5 w-20 bg-gray-800 rounded"></div>
+                            <div class="h-5 w-12 bg-gray-800 rounded"></div>
+                            <div class="h-5 w-8 bg-gray-800 rounded"></div>
+                        </div>
+
+                        <!-- Button Skeleton -->
+                        <div class="h-12 w-36 bg-gray-800 rounded-md mb-8"></div>
+                        
+                        <!-- Content Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-8">
+                            <!-- Description -->
+                            <div class="space-y-3">
+                                <div class="h-4 bg-gray-800 rounded w-full"></div>
+                                <div class="h-4 bg-gray-800 rounded w-11/12"></div>
+                                <div class="h-4 bg-gray-800 rounded w-10/12"></div>
+                            </div>
+
+                            <!-- Sidebar -->
+                            <div class="space-y-3 p-4 bg-white/5 rounded-lg">
+                                 <div class="h-4 bg-gray-800 rounded w-3/4"></div>
+                                 <div class="h-4 bg-gray-800 rounded w-full"></div>
+                            </div>
+                        </div>
+
+                        <!-- Recommended Skeleton -->
+                         <div class="mt-10 pt-8 border-t border-gray-800">
+                            <div class="h-6 w-32 bg-gray-800 rounded mb-4"></div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                ${Array(4).fill(0).map(() => `
+                                    <div class="aspect-video bg-gray-800 rounded-md"></div>
+                                `).join('')}
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            `;
+
+        try {
+            // Note: /api/details now returns 'qualities' if stream is included
+            const response = await fetch(`/api/details/${encodeURIComponent(title)}?include_stream=true`);
+            const details = await response.json();
+
+            if (details.error) {
+                modalBody.innerHTML = `<div class="p-10 text-center">${details.error}</div>`;
+                return;
+            }
+
+            currentMovieData = details;
+            currentMovieData.image = image; // ensure image is set
+
+            const actors = details.actors.slice(0, 3).join(', ');
+            const genre = Array.isArray(details.genre) ? details.genre.join(' • ') : details.genre;
+
+            // Recommended Logic
+            const recommended = allMovies
+                .filter(m => m.title !== title && m.isMovie !== false)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 4);
+
+            let recommendedHTML = '';
+            if (recommended.length > 0) {
+                recommendedHTML = `
+                     <div class="recommended-section mt-8 border-t border-gray-800 pt-8">
+                        <h3 class="recommended-title mb-4 font-bold text-xl text-white">More Like This</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            ${recommended.map(m => `
+                                <div class="bg-[#2f2f2f] rounded overflow-hidden cursor-pointer hover:bg-[#3f3f3f] transition group" onclick="openMovieModal('${m.title.replace(/'/g, "\\'")}', '${m.image}')">
+                                    <div class="aspect-video bg-gray-800 relative overflow-hidden">
+                                        <img src="${m.image}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                            <span class="material-symbols-outlined text-4xl">play_circle</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-3">
+                                        <div class="text-sm font-bold text-gray-200 truncate">${m.title}</div>
+                                        <div class="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                                            <span class="text-green-500">${m.rating || 'N/A'}</span>
+                                            <span>${m.year || ''}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                     </div>`;
+            }
+
+            // For You recommendations for movies
+            const forYouMovies = allMovies
+                .filter(m => m.title !== title && m.isMovie !== false)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 6);
+
+            const forYouMovieHTML = forYouMovies.map(m => `
+                <div class="for-you-card" onclick="openMovieModal('${m.title.replace(/'/g, "\\'")}', '${m.image}')">
+                    <img src="${m.image}" alt="${m.title}">
+                    <span class="lang-badge">HD</span>
+                </div>
+            `).join('');
+
+            modalBody.innerHTML = `
+                    <!-- ============================================ -->
+                    <!-- MOBILE QUICK VIEW (New App-Like Design) -->
+                    <!-- ============================================ -->
+                    <div class="mobile-quick-view">
+                        <!-- Back Button -->
+                        <button class="mobile-back-btn fixed top-3 left-3 z-50 bg-black/60 backdrop-blur-sm text-white w-10 h-10 rounded-full flex items-center justify-center" onclick="closeModal()">
+                            <span class="material-symbols-outlined">arrow_back</span>
+                        </button>
+
+                        <!-- Video Preview / Inline Player Area -->
+                        <div class="video-preview" id="movieMobileVideoArea">
+                            <!-- Premium SVG Buffering Spinner -->
+                            <div id="movieMobileLoadingSpinner" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                                <div class="video-spinner-container">
+                                    <svg class="video-spinner-svg" viewBox="0 0 50 50">
+                                        <circle class="spinner-track" cx="25" cy="25" r="20"></circle>
+                                        <circle class="spinner-progress" cx="25" cy="25" r="20"></circle>
+                                    </svg>
+                                </div>
+                            </div>
+                            <!-- Tap to Play/Pause Overlay -->
+                            <div class="absolute top-0 left-0 right-0 bottom-12 z-[15]" onclick="toggleMovieMobilePlay(event)"></div>
+                            <!-- Inline Video Player -->
+                            <video id="movieMobileInlinePlayer" class="w-full h-full object-cover" playsinline></video>
+                            <!-- Inline Controls -->
+                            <div id="movieMobilePlayerControls" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-3 z-[25]">
+                                <div class="flex items-center gap-3" onclick="event.stopPropagation()">
+                                    <button onclick="toggleMovieMobilePlay(event); event.stopPropagation();" class="text-white">
+                                        <span class="material-symbols-outlined" id="movieMobilePlayIcon">play_arrow</span>
+                                    </button>
+                                    <div class="flex-1 h-2 bg-white/30 rounded-full overflow-hidden cursor-pointer relative" onclick="event.stopPropagation(); seekMovieMobilePlayer(event);">
+                                        <div id="movieMobileProgressBar" class="h-full bg-red-600 rounded-full pointer-events-none" style="width: 0%"></div>
+                                    </div>
+                                    <span id="movieMobileTimeDisplay" class="text-white text-xs" onclick="event.stopPropagation()">0:00/0:00</span>
+                                    <button onclick="event.stopPropagation(); toggleMovieMobileFullscreen(event);" class="text-white">
+                                        <span class="material-symbols-outlined">fullscreen</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Title Row -->
+                        <div class="title-row">
+                            <div class="title">${details.title}</div>
+                            <button class="info-btn" onclick="openBottomSheet()">
+                                Info <span class="material-symbols-outlined" style="font-size: 16px;">chevron_right</span>
+                            </button>
+                        </div>
+
+                        <!-- Meta Row -->
+                        <div class="meta-row">
+                            <span class="badge">Movie</span>
+                            <span class="rating">⭐ ${details.rating || 'N/A'}</span>
+                            <span>${details.year}</span>
+                            <span>${genre.split(' • ').slice(0, 2).join(' • ')}</span>
+                            <span class="badge">HD</span>
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div class="action-bar">
+                            <button onclick="alert('Added to list!')">
+                                <span class="material-symbols-outlined">playlist_add</span> Add to list
+                            </button>
+                            <button onclick="navigator.share?.({title: '${details.title}', url: window.location.href})">
+                                <span class="material-symbols-outlined">share</span> Share
+                            </button>
+                            <button>
+                                <span class="material-symbols-outlined">download</span> Download
+                            </button>
+                        </div>
+
+                        <!-- For You Section -->
+                        <div class="for-you-section">
+                            <div class="section-header">
+                                <button class="tab active">For you</button>
+                                <button class="tab">Comments</button>
+                            </div>
+                            <div class="for-you-grid">
+                                ${forYouMovieHTML}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================ -->
+                    <!-- MOBILE BOTTOM SHEET (Movie Details) -->
+                    <!-- ============================================ -->
+                    <div class="sheet-overlay" onclick="closeBottomSheet()"></div>
+                    <div class="mobile-bottom-sheet" id="mobileBottomSheet">
+                        <div class="sheet-header">
+                            <h3>More details</h3>
+                            <button class="close-btn" onclick="closeBottomSheet()">×</button>
+                        </div>
+                        <div class="content-row">
+                            <img class="poster" src="${image}" alt="${details.title}">
+                            <div class="info">
+                                <div class="title">${details.title}</div>
+                                <div class="meta">
+                                    <span class="rating">⭐ ${details.rating || 'N/A'}</span>
+                                    <span>${details.year}</span>
+                                    <span>${genre}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="info-section">
+                            <h4>Info</h4>
+                            <p>${details.description}</p>
+                        </div>
+                        <div class="starring-section">
+                            <h4>Starring (${details.actors?.length || 0})</h4>
+                            <div class="actors-scroll">
+                                ${(details.actors || []).slice(0, 10).map(actor => `
+                                    <div class="actor-card">
+                                        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(actor)}&background=333&color=fff&size=60" alt="${actor}">
+                                        <div class="name">${actor.split(' ')[0]}</div>
+                                        <div class="role">Actor</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================ -->
+                    <!-- DESKTOP VIEW (Hidden on Mobile) -->
+                    <!-- ============================================ -->
+                    <div class="modal-banner hide-mobile" style="background-image: url('${image}');">
+                        <div class="modal-banner-gradient"></div>
+                        <button class="modal-close" onclick="closeModal()">×</button>
+                    </div>
+                    
+                    <div class="modal-info hidden md:block">
+                        <h1 class="modal-title">${details.title}</h1>
+                        <div class="modal-meta">
+                            <span class="text-green-500 font-bold">${details.rating || 'N/A'} Match</span>
+                            <span>${details.year}</span>
+                            <span class="border border-gray-600 px-1 text-xs text-gray-400">HD</span>
+                        </div>
+
+                        <button onclick="playMovie()" class="btn-watch mb-6">
+                            <span class="material-symbols-outlined">play_arrow</span> Play
+                        </button>
+                        
+                        <p class="mb-6 leading-relaxed text-gray-300">${details.description}</p>
+                        <div class="text-sm text-gray-500">
+                            <div class="mb-1"><span class="text-gray-400">Cast:</span> ${actors}</div>
+                            <div><span class="text-gray-400">Genres:</span> ${genre}</div>
+                        </div>
+                    </div>
+                    ${recommendedHTML}
+                `;
+
+            // Auto-play movie on mobile
+            if (window.innerWidth <= 768) {
+                playMovieInlineMobile();
+            }
+        } catch (e) {
+            console.error(e);
+            modalBody.innerHTML = '<div class="p-10 text-center">Failed</div>';
+        }
+    }
+
+    async function playEpisode(episodeNumber) {
+        if (!currentTVData) return;
+        if (isPlayerOpening) return;
+        isPlayerOpening = true;
+
+        // Track that we came from a modal
+        wasModalOpenBeforePlayer = true;
+
+        // Hide modal (don't close it, just hide visually)
+        document.getElementById('movieModal').classList.remove('active');
+
+        // Show loading initially
+        setupPlayerUI(`${currentTVData.title} S${currentSeason}:E${episodeNumber}`);
+
+        try {
+            const response = await fetch(`/api/tv_stream_url/${encodeURIComponent(currentTVData.title)}/${currentSeason}/${episodeNumber}`);
+            const data = await response.json();
+
+            if (data.error) { alert(data.error); closePlayer(); return; }
+
+            // data.url is now a local /stream/{token} path, use directly
+            // Pass true to skip branding since we already started it
+            openPlayer(data.title, data.url, data.qualities, true);
+
+        } catch (e) {
+            console.error(e);
+            closePlayer();
+        } finally {
+            isPlayerOpening = false;
+        }
+    }
+
+    let currentQualities = [];
+    let currentQualityUrl = "";
+    let currentVideoKey = ""; // Unique key for each video to save/load progress
+
+    // ============================================
+    // CONTINUE WATCHING - Progress Save/Load
+    // ============================================
+    function getProgressKey(title) {
+        // Create a unique key for localStorage
+        return `cv_progress_${title.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+
+    function saveProgress(key, currentTime, duration) {
+        if (!key || !duration || duration < 60) return; // Don't save for very short videos
+
+        // Only save if watched more than 10 seconds and less than 95% complete
+        const percentComplete = (currentTime / duration) * 100;
+        if (currentTime > 10 && percentComplete < 95) {
+            localStorage.setItem(key, JSON.stringify({
+                time: currentTime,
+                duration: duration,
+                savedAt: Date.now()
+            }));
+        } else if (percentComplete >= 95) {
+            // Video finished, remove progress
+            localStorage.removeItem(key);
+        }
+    }
+
+    function loadProgress(key) {
+        if (!key) return 0;
+        try {
+            const data = JSON.parse(localStorage.getItem(key));
+            if (data && data.time) {
+                // Check if saved within last 30 days
+                const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+                if (Date.now() - data.savedAt < thirtyDays) {
+                    return data.time;
+                }
+            }
+        } catch (e) {
+            console.log('Could not load progress:', e);
+        }
+        return 0;
+    }
+
+    function openPlayer(title, streamUrl, qualities = [], skipBranding = false) {
+        // Track that we came from a modal (if modal is currently active)
+        const movieModal = document.getElementById('movieModal');
+        if (movieModal.classList.contains('active')) {
+            wasModalOpenBeforePlayer = true;
+            movieModal.classList.remove('active'); // Hide modal visually, don't close
+        }
+
+        // Set current video key for progress tracking
+        currentVideoKey = getProgressKey(title);
+
+        if (!skipBranding) {
+            setupPlayerUI(title);
+        } else {
+            // Ensure title is up to date even if skipping animation setup
+            if (playerTitle) playerTitle.innerText = title;
+        }
+
+        // Set Initial Quality State
+        currentQualities = qualities;
+        currentQualityUrl = streamUrl; // Default start
+
+        updateQualityMenu(streamUrl);
+
+        // StreamURL is already proxied path (/stream/{token})
+        startVideo(streamUrl);
+    }
+
+    function updateQualityMenu(activeUrl) {
+        const list = document.getElementById('qualityList');
+        const menu = document.getElementById('qualityMenu');
+
+        if (!currentQualities || currentQualities.length === 0) {
+            list.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">Auto</div>';
+            return;
+        }
+
+        list.innerHTML = currentQualities.map(q => {
+            const isActive = q.url === activeUrl;
+            return `
+                    <div onclick="switchQuality('${q.url}')" 
+                         class="px-4 py-2 text-sm text-left hover:bg-white/10 cursor-pointer flex items-center justify-between ${isActive ? 'text-netflix-red font-bold' : 'text-gray-200'}">
+                        <span>${q.label}</span>
+                        ${isActive ? '<span class="material-symbols-outlined text-xs">check</span>' : ''}
+                    </div>
+                `;
+        }).join('');
+    }
+
+    function switchQuality(newUrl) {
+        if (newUrl === currentQualityUrl) return;
+
+        const wasPlaying = !player.paused;
+        const time = player.currentTime;
+
+        currentQualityUrl = newUrl;
+        updateQualityMenu(newUrl);
+
+        // newUrl is already /stream/{token}
+        player.src = newUrl;
+
+        // Show spinner while switching
+        document.getElementById('bufferingSpinner').classList.remove('hidden');
+
+        player.load();
+        player.onloadedmetadata = () => {
+            player.currentTime = time;
+            if (wasPlaying) player.play();
+            document.getElementById('bufferingSpinner').classList.add('hidden');
+        };
+    }
+
+    // Show/Hide Settings Menu
+    document.querySelector('.group\\/settings').addEventListener('click', (e) => {
+        // Don't trigger if clicked inside the menu
+        const menu = document.getElementById('qualityMenu');
+        if (menu.contains(e.target)) return;
+
+        menu.classList.toggle('hidden');
+        menu.classList.toggle('flex');
+    });
+
+    // Close menu when clicking outside
+    /* Already handled by global click listener on playerModal if we're careful, 
+       but let's do safe specific clicking */
+    document.addEventListener('click', (e) => {
+        const wrapper = document.querySelector('.group\\/settings');
+        const menu = document.getElementById('qualityMenu');
+        if (wrapper && !wrapper.contains(e.target)) {
+            menu.classList.add('hidden');
+            menu.classList.remove('flex');
+        }
+    });
+
+    function setupPlayerUI(title) {
+        playerModal.classList.remove('hidden');
+        playerModal.classList.add('flex');
+        playerTitle.innerText = title;
+
+        // Clear any existing timer to prevent overlap
+        if (brandingTimeout) clearTimeout(brandingTimeout);
+
+        // Show Branding Animation
+        brandingOverlay.classList.remove('hidden');
+        brandingOverlay.style.opacity = '1';
+        videoContainer.style.opacity = '0';
+        playerLoading.classList.add('hidden'); // Hide spinner while branding plays
+
+        // Start animation timer
+        brandingTimeout = setTimeout(() => {
+            brandingOverlay.classList.add('hidden');
+            videoContainer.style.opacity = '1';
+            // If video is still loading, show spinner now
+            if (player.readyState < 3) {
+                playerLoading.classList.remove('hidden');
+            }
+        }, 2500);
+    }
+
+    function startVideo(url) {
+        player.src = url;
+        player.load();
+
+        player.addEventListener('canplay', () => {
+            // Video is ready
+            if (brandingOverlay.classList.contains('hidden')) {
+                // Only hide loading if branding is already gone
+                playerLoading.classList.add('hidden');
+            }
+
+            // Resume from saved position
+            const savedTime = loadProgress(currentVideoKey);
+            if (savedTime > 0) {
+                player.currentTime = savedTime;
+                console.log(`Resuming from ${formatTime(savedTime)}`);
+            }
+
+            player.play().catch(e => console.log("Autoplay blocked:", e));
+            resetHideControlsTimer();
+        }, { once: true });
+
+        player.addEventListener('waiting', () => {
+            if (brandingOverlay.classList.contains('hidden')) {
+                document.getElementById('bufferingSpinner').classList.remove('hidden');
+            }
+        });
+        player.addEventListener('playing', () => document.getElementById('bufferingSpinner').classList.add('hidden'));
+
+        // Robust Play/Pause Icon Sync
+        player.onplay = () => {
+            playPauseBtn.querySelector('span').innerText = 'pause';
+        };
+        player.onpause = () => {
+            playPauseBtn.querySelector('span').innerText = 'play_arrow';
+            // Save progress when paused
+            saveProgress(currentVideoKey, player.currentTime, player.duration);
+        };
+    }
+
+    // Track which modal was open before player
+    let wasModalOpenBeforePlayer = false;
+
+    function closePlayer() {
+        // Save progress before closing
+        saveProgress(currentVideoKey, player.currentTime, player.duration);
+
+        player.pause();
+        player.src = '';
+        playerModal.classList.add('hidden');
+        playerModal.classList.remove('flex');
+        document.body.style.cursor = 'default';
+
+        if (brandingTimeout) clearTimeout(brandingTimeout);
+        isPlayerOpening = false;
+        currentVideoKey = ''; // Reset video key
+
+        // Cleanup listeners
+        player.onplay = null;
+        player.onpause = null;
+
+        // Return to the modal if it was open before
+        if (wasModalOpenBeforePlayer) {
+            document.getElementById('movieModal').classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+    }
+
+    function togglePlayPause() {
+        if (player.paused) {
+            player.play();
+        } else {
+            player.pause();
+        }
+    }
+
+    function skipTime(amt) { player.currentTime += amt; resetHideControlsTimer(); }
+
+    function toggleMute() {
+        player.muted = !player.muted;
+        document.getElementById('muteBtn').querySelector('span').innerText = player.muted ? 'volume_off' : 'volume_up';
+    }
+
+    function changeVolume(val) { player.volume = val / 100; player.muted = false; }
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) playerModal.requestFullscreen();
+        else document.exitFullscreen();
+    }
+
+    function formatTime(s) {
+        if (isNaN(s)) return "0:00";
+        let m = Math.floor(s / 60);
+        let sec = Math.floor(s % 60);
+        return `${m}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    player.addEventListener('timeupdate', () => {
+        if (!player.duration) return;
+        const pct = (player.currentTime / player.duration) * 100;
+        progressBar.style.width = pct + '%';
+        timeDisplay.innerText = formatTime(player.currentTime);
+
+        // Auto-save progress every 10 seconds
+        if (Math.floor(player.currentTime) % 10 === 0) {
+            saveProgress(currentVideoKey, player.currentTime, player.duration);
+        }
+    });
+
+    progressContainer.addEventListener('click', (e) => {
+        const rect = progressContainer.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        player.currentTime = pos * player.duration;
+    });
+
+    // Tooltip
+    const tooltip = document.getElementById('timeTooltip');
+    progressContainer.addEventListener('mousemove', (e) => {
+        const rect = progressContainer.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        const time = pos * player.duration;
+        tooltip.style.left = (e.clientX - rect.left) + 'px';
+        tooltip.innerText = formatTime(time);
+        tooltip.style.opacity = '1';
+    });
+    progressContainer.addEventListener('mouseleave', () => tooltip.style.opacity = '0');
+
+    // Controls Visibility
+    function resetHideControlsTimer() {
+        playerModal.classList.add('show-controls');
+        document.body.style.cursor = 'default';
+        clearTimeout(hideControlsTimeout);
+        hideControlsTimeout = setTimeout(() => {
+            if (!player.paused) {
+                playerModal.classList.remove('show-controls');
+                document.body.style.cursor = 'none'; // hide cursor for immersion
+            }
+        }, 3000);
+    }
+
+    playerModal.addEventListener('mousemove', resetHideControlsTimer);
+    playerModal.addEventListener('click', resetHideControlsTimer);
+    // If clicking video without controls, toggle play is handled by overlay div
+
+    function closeModal() {
+        // STOP the mobile inline player first!
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        if (mobilePlayer) {
+            mobilePlayer.pause();
+            mobilePlayer.src = '';
+            mobilePlayer.load(); // Clear the buffer
+        }
+
+        // STOP the movie mobile inline player too!
+        const movieMobilePlayer = document.getElementById('movieMobileInlinePlayer');
+        if (movieMobilePlayer) {
+            movieMobilePlayer.pause();
+            movieMobilePlayer.src = '';
+            movieMobilePlayer.load();
+        }
+
+        // Reset mobile player state
+        mobilePlayerActive = false;
+
+        // Hide spinners
+        const spinner = document.getElementById('mobileLoadingSpinner');
+        if (spinner) spinner.classList.add('hidden');
+        const movieSpinner = document.getElementById('movieMobileLoadingSpinner');
+        if (movieSpinner) movieSpinner.classList.add('hidden');
+
+        // Close modal
+        document.getElementById('movieModal').classList.remove('active');
+        document.body.classList.remove('modal-open');
+        wasModalOpenBeforePlayer = false;
+        closeBottomSheet();
+
+        // Clear prefetched URL
+        if (currentTVData) {
+            currentTVData.prefetchedStreamUrl = null;
+        }
+    }
+
+    // ============================================
+    // MOBILE BOTTOM SHEET & EPISODE PILLS
+    // ============================================
+    function openBottomSheet() {
+        const sheet = document.getElementById('mobileBottomSheet');
+        const overlay = document.querySelector('.sheet-overlay');
+        if (sheet) {
+            sheet.classList.add('active');
+            // Trigger animation
+            setTimeout(() => sheet.style.transform = 'translateY(0)', 10);
+        }
+        if (overlay) overlay.classList.add('active');
+    }
+
+    function closeBottomSheet() {
+        const sheet = document.getElementById('mobileBottomSheet');
+        const overlay = document.querySelector('.sheet-overlay');
+        if (sheet) {
+            sheet.style.transform = 'translateY(100%)';
+            setTimeout(() => sheet.classList.remove('active'), 300);
+        }
+        if (overlay) overlay.classList.remove('active');
+    }
+
+    function selectEpisodePill(epNumber, btn) {
+        // Update active state for all pills
+        updateActiveEpisodePill(epNumber);
+
+        // If 'all' is clicked, show all episodes (could scroll to top)
+        if (epNumber === 'all') {
+            return;
+        }
+
+        // Play the selected episode inline for mobile
+        playEpisodeInline(epNumber);
+    }
+
+    function updateActiveEpisodePill(epNumber) {
+        const container = document.getElementById('mobileEpisodePills');
+        if (!container) return;
+
+        container.querySelectorAll('.episode-pill').forEach(p => {
+            p.classList.remove('active');
+            // Check if this pill matches the episode number
+            const pillText = p.innerText.trim();
+            if (epNumber === 'all' && pillText === 'All') {
+                p.classList.add('active');
+            } else if (pillText === epNumber.toString().padStart(2, '0') || pillText === epNumber.toString()) {
+                p.classList.add('active');
+            }
+        });
+    }
+
+    // ============================================
+    // MOBILE INLINE VIDEO PLAYER
+    // ============================================
+    let mobilePlayerActive = false;
+    let currentPlayingEpisode = 1;
+    let currentMobileQualities = [];
+    let currentMobileStreamUrl = '';
+    let currentMobileQuality = 'Auto';
+
+    function playMovieInline() {
+        if (!currentMovieData || !currentMovieData.streamUrl) {
+            console.log('No stream URL available');
+            return;
+        }
+
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const thumb = document.getElementById('mobileVideoThumb');
+        const overlay = document.getElementById('mobilePlayOverlay');
+        const controls = document.getElementById('mobilePlayerControls');
+
+        if (!mobilePlayer) {
+            // Fallback to full player on desktop
+            playMovie();
+            return;
+        }
+
+        // Hide thumbnail, show video
+        thumb.classList.add('hidden');
+        overlay.classList.add('hidden');
+        mobilePlayer.classList.remove('hidden');
+        controls.classList.remove('hidden');
+
+        // Set source and play
+        mobilePlayer.src = currentMovieData.streamUrl;
+        mobilePlayer.load();
+        mobilePlayer.play().catch(e => console.log('Autoplay blocked:', e));
+        mobilePlayerActive = true;
+
+        // Setup event listeners
+        mobilePlayer.ontimeupdate = updateMobileProgress;
+        mobilePlayer.onplay = () => {
+            document.getElementById('mobilePlayIcon').innerText = 'pause';
+        };
+        mobilePlayer.onpause = () => {
+            document.getElementById('mobilePlayIcon').innerText = 'play_arrow';
+        };
+    }
+
+    async function playEpisodeInline(episodeNumber) {
+        if (!currentTVData) return;
+
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const spinner = document.getElementById('mobileLoadingSpinner');
+
+        if (!mobilePlayer) {
+            // Fallback to full player on desktop
+            playEpisode(episodeNumber);
+            return;
+        }
+
+        // STOP current video first
+        mobilePlayer.pause();
+        mobilePlayer.src = '';
+
+        // Show loading spinner
+        if (spinner) spinner.classList.remove('hidden');
+
+        // Update active pill and track current episode
+        updateActiveEpisodePill(episodeNumber);
+        currentPlayingEpisode = episodeNumber;
+
+        try {
+            let data;
+
+            // Use prefetched URL for first episode of first season (faster load!)
+            if (currentSeason === 1 && episodeNumber === 1 && currentTVData.prefetchedStreamUrl) {
+                const response = await currentTVData.prefetchedStreamUrl;
+                data = await response.json();
+                currentTVData.prefetchedStreamUrl = null; // Clear after use
+            } else {
+                const response = await fetch(`/api/tv_stream_url/${encodeURIComponent(currentTVData.title)}/${currentSeason}/${episodeNumber}`);
+                data = await response.json();
+            }
+
+            if (data.error) {
+                if (spinner) spinner.classList.add('hidden');
+                alert(data.error);
+                return;
+            }
+
+            // Store qualities for the quality selector
+            currentMobileQualities = data.qualities || [];
+            currentMobileStreamUrl = data.url;
+
+            // Set source and play
+            mobilePlayer.src = data.url;
+            mobilePlayer.load();
+
+            // Hide spinner when video can play
+            mobilePlayer.oncanplay = () => {
+                if (spinner) spinner.classList.add('hidden');
+            };
+
+            mobilePlayer.play().catch(e => {
+                console.log('Autoplay blocked:', e);
+                if (spinner) spinner.classList.add('hidden');
+            });
+
+            mobilePlayerActive = true;
+
+            // Setup event listeners
+            mobilePlayer.ontimeupdate = updateMobileProgress;
+            mobilePlayer.onplay = () => {
+                const icon = document.getElementById('mobilePlayIcon');
+                if (icon) icon.innerText = 'pause';
+                if (spinner) spinner.classList.add('hidden');
+            };
+            mobilePlayer.onpause = () => {
+                const icon = document.getElementById('mobilePlayIcon');
+                if (icon) icon.innerText = 'play_arrow';
+            };
+            mobilePlayer.onwaiting = () => {
+                if (spinner) spinner.classList.remove('hidden');
+            };
+            mobilePlayer.onplaying = () => {
+                if (spinner) spinner.classList.add('hidden');
+            };
+            mobilePlayer.onseeking = () => {
+                if (spinner) spinner.classList.remove('hidden');
+            };
+            mobilePlayer.onseeked = () => {
+                // Small delay to check if still buffering
+                setTimeout(() => {
+                    if (mobilePlayer.readyState >= 3) {
+                        if (spinner) spinner.classList.add('hidden');
+                    }
+                }, 100);
+            };
+        } catch (e) {
+            console.error('Error fetching episode:', e);
+            if (spinner) spinner.classList.add('hidden');
+        }
+    }
+
+    function updateMobileProgress() {
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const progressBar = document.getElementById('mobileProgressBar');
+        const timeDisplay = document.getElementById('mobileTimeDisplay');
+
+        if (!mobilePlayer || !mobilePlayer.duration) return;
+
+        const pct = (mobilePlayer.currentTime / mobilePlayer.duration) * 100;
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (timeDisplay) {
+            timeDisplay.innerText = `${formatTime(mobilePlayer.currentTime)}/${formatTime(mobilePlayer.duration)}`;
+        }
+    }
+
+    function toggleMobilePlay(e) {
+        e.stopPropagation();
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        if (!mobilePlayer) return;
+
+        if (mobilePlayer.paused) {
+            mobilePlayer.play();
+        } else {
+            mobilePlayer.pause();
+        }
+    }
+
+    function toggleMobileFullscreen(e) {
+        e.stopPropagation();
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const videoArea = document.getElementById('mobileVideoArea');
+        if (!mobilePlayer) return;
+
+        if (mobilePlayer.requestFullscreen) {
+            mobilePlayer.requestFullscreen();
+        } else if (mobilePlayer.webkitEnterFullscreen) {
+            mobilePlayer.webkitEnterFullscreen();
+        } else if (videoArea.requestFullscreen) {
+            videoArea.requestFullscreen();
+        }
+    }
+
+    function seekMobilePlayer(e) {
+        e.stopPropagation();
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const spinner = document.getElementById('mobileLoadingSpinner');
+        if (!mobilePlayer || !mobilePlayer.duration) return;
+
+        // Show spinner while seeking
+        if (spinner) spinner.classList.remove('hidden');
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        mobilePlayer.currentTime = pos * mobilePlayer.duration;
+    }
+
+    // Setup buffering detection for mobile player
+    function setupMobilePlayerBuffering() {
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const spinner = document.getElementById('mobileLoadingSpinner');
+        if (!mobilePlayer) return;
+
+        // Buffering events
+        mobilePlayer.addEventListener('waiting', () => {
+            if (spinner) spinner.classList.remove('hidden');
+        });
+
+        mobilePlayer.addEventListener('playing', () => {
+            if (spinner) spinner.classList.add('hidden');
+        });
+
+        mobilePlayer.addEventListener('canplay', () => {
+            if (spinner) spinner.classList.add('hidden');
+        });
+
+        mobilePlayer.addEventListener('seeked', () => {
+            // Small delay to ensure buffering check
+            setTimeout(() => {
+                if (!mobilePlayer.paused && mobilePlayer.readyState >= 3) {
+                    if (spinner) spinner.classList.add('hidden');
+                }
+            }, 100);
+        });
+    }
+
+    // ============================================
+    // MOVIE MOBILE INLINE PLAYER
+    // ============================================
+    async function playMovieInlineMobile() {
+        if (!currentMovieData) return;
+
+        const mobilePlayer = document.getElementById('movieMobileInlinePlayer');
+        const spinner = document.getElementById('movieMobileLoadingSpinner');
+
+        if (!mobilePlayer) return;
+
+        // Show loading spinner
+        if (spinner) spinner.classList.remove('hidden');
+
+        try {
+            // Fetch the stream URL if not already available
+            let streamUrl = currentMovieData.streamUrl;
+
+            if (!streamUrl) {
+                const response = await fetch(`/api/stream_url/${encodeURIComponent(currentMovieData.title)}`);
+                const data = await response.json();
+                if (data.error) {
+                    if (spinner) spinner.classList.add('hidden');
+                    console.error(data.error);
+                    return;
+                }
+                streamUrl = data.url;
+                currentMovieData.streamUrl = streamUrl;
+            }
+
+            // Set source and play
+            mobilePlayer.src = streamUrl;
+            mobilePlayer.load();
+
+            // Hide spinner when video can play
+            mobilePlayer.oncanplay = () => {
+                if (spinner) spinner.classList.add('hidden');
+            };
+
+            mobilePlayer.play().catch(e => {
+                console.log('Autoplay blocked:', e);
+                if (spinner) spinner.classList.add('hidden');
+            });
+
+            // Setup event listeners
+            mobilePlayer.ontimeupdate = updateMovieMobileProgress;
+            mobilePlayer.onplay = () => {
+                const icon = document.getElementById('movieMobilePlayIcon');
+                if (icon) icon.innerText = 'pause';
+                if (spinner) spinner.classList.add('hidden');
+            };
+            mobilePlayer.onpause = () => {
+                const icon = document.getElementById('movieMobilePlayIcon');
+                if (icon) icon.innerText = 'play_arrow';
+            };
+            mobilePlayer.onwaiting = () => {
+                if (spinner) spinner.classList.remove('hidden');
+            };
+            mobilePlayer.onplaying = () => {
+                if (spinner) spinner.classList.add('hidden');
+            };
+            mobilePlayer.onseeking = () => {
+                if (spinner) spinner.classList.remove('hidden');
+            };
+            mobilePlayer.onseeked = () => {
+                setTimeout(() => {
+                    if (mobilePlayer.readyState >= 3) {
+                        if (spinner) spinner.classList.add('hidden');
+                    }
+                }, 100);
+            };
+        } catch (e) {
+            console.error('Error playing movie:', e);
+            if (spinner) spinner.classList.add('hidden');
+        }
+    }
+
+    function updateMovieMobileProgress() {
+        const mobilePlayer = document.getElementById('movieMobileInlinePlayer');
+        const progressBar = document.getElementById('movieMobileProgressBar');
+        const timeDisplay = document.getElementById('movieMobileTimeDisplay');
+
+        if (!mobilePlayer || !mobilePlayer.duration) return;
+
+        const pct = (mobilePlayer.currentTime / mobilePlayer.duration) * 100;
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (timeDisplay) {
+            timeDisplay.innerText = `${formatTime(mobilePlayer.currentTime)}/${formatTime(mobilePlayer.duration)}`;
+        }
+    }
+
+    function toggleMovieMobilePlay(e) {
+        if (e) e.stopPropagation();
+        const mobilePlayer = document.getElementById('movieMobileInlinePlayer');
+        if (!mobilePlayer) return;
+
+        if (mobilePlayer.paused) {
+            mobilePlayer.play();
+        } else {
+            mobilePlayer.pause();
+        }
+    }
+
+    function toggleMovieMobileFullscreen(e) {
+        if (e) e.stopPropagation();
+        const mobilePlayer = document.getElementById('movieMobileInlinePlayer');
+        const videoArea = document.getElementById('movieMobileVideoArea');
+        if (!mobilePlayer) return;
+
+        if (mobilePlayer.requestFullscreen) {
+            mobilePlayer.requestFullscreen();
+        } else if (mobilePlayer.webkitEnterFullscreen) {
+            mobilePlayer.webkitEnterFullscreen();
+        } else if (videoArea && videoArea.requestFullscreen) {
+            videoArea.requestFullscreen();
+        }
+    }
+
+    function seekMovieMobilePlayer(e) {
+        if (e) e.stopPropagation();
+        const mobilePlayer = document.getElementById('movieMobileInlinePlayer');
+        const spinner = document.getElementById('movieMobileLoadingSpinner');
+        if (!mobilePlayer || !mobilePlayer.duration) return;
+
+        // Show spinner while seeking
+        if (spinner) spinner.classList.remove('hidden');
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        mobilePlayer.currentTime = pos * mobilePlayer.duration;
+    }
+
+    // Toggle mobile settings menu
+    function toggleMobileSettings(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('mobileSettingsMenu');
+        if (menu) {
+            menu.classList.toggle('hidden');
+
+            // Populate quality options if we have them
+            if (currentTVData && !menu.classList.contains('hidden')) {
+                populateMobileQualities();
+            }
+        }
+    }
+
+    // Populate quality options in mobile settings
+    function populateMobileQualities() {
+        const list = document.getElementById('mobileQualityList');
+        if (!list) return;
+
+        // Use actual qualities from API if available
+        let qualities = [];
+
+        if (currentMobileQualities && currentMobileQualities.length > 0) {
+            qualities = currentMobileQualities.map(q => ({
+                label: q.quality || q.label || 'Unknown',
+                url: q.url || q.stream_url
+            }));
+        }
+
+        // If no qualities from API, show message
+        if (qualities.length === 0) {
+            list.innerHTML = `
+                <div class="px-3 py-2 text-sm text-gray-400">Auto (Default)</div>
+                <div class="px-3 py-2 text-xs text-gray-500">Quality options not available</div>
+            `;
+            return;
+        }
+
+        // Render quality buttons
+        list.innerHTML = qualities.map((q, i) => {
+            const isActive = currentMobileQuality === q.label || (i === 0 && currentMobileQuality === 'Auto');
+            return `
+                <button class="block w-full text-left px-3 py-2 text-sm hover:bg-white/10 rounded ${isActive ? 'text-red-500' : 'text-white'}" 
+                        onclick="selectMobileQuality('${q.label}', '${q.url}')">
+                    ${isActive ? '✓ ' : ''}${q.label}
+                </button>
+            `;
+        }).join('');
+    }
+
+    function selectMobileQuality(quality, url) {
+        // Close menu
+        const menu = document.getElementById('mobileSettingsMenu');
+        if (menu) menu.classList.add('hidden');
+
+        // If no URL or same quality, do nothing
+        if (!url || quality === currentMobileQuality) return;
+
+        const mobilePlayer = document.getElementById('mobileInlinePlayer');
+        const spinner = document.getElementById('mobileLoadingSpinner');
+        if (!mobilePlayer) return;
+
+        // Save current time
+        const currentTime = mobilePlayer.currentTime;
+        const wasPlaying = !mobilePlayer.paused;
+
+        // Show spinner
+        if (spinner) spinner.classList.remove('hidden');
+
+        // Update quality
+        currentMobileQuality = quality;
+        currentMobileStreamUrl = url;
+
+        // Change source
+        mobilePlayer.src = url;
+        mobilePlayer.load();
+
+        // Restore position after load
+        mobilePlayer.onloadedmetadata = () => {
+            mobilePlayer.currentTime = currentTime;
+            if (wasPlaying) {
+                mobilePlayer.play().catch(e => console.log('Play error:', e));
+            }
+            if (spinner) spinner.classList.add('hidden');
+        };
+    }
+
+    // Close settings menu when clicking outside
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('mobileSettingsMenu');
+        const settingsBtn = e.target.closest('[onclick*="toggleMobileSettings"]');
+        if (menu && !menu.contains(e.target) && !settingsBtn) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    fetchHome();
+</script>
+</body>
+
+</html>
