@@ -108,15 +108,33 @@ def set_cached(key, value):
 # --- HELPERS ---
 
 def get_session():
-    """Create a session, optionally using a proxy if configured."""
-    # Check for BD_PROXY_URL in environment variables
+    """Create a session with fake BD IP headers to bypass geo-restrictions."""
+    import random
+    
+    # Generate a random IP looking like a BD IP (e.g., 103.x.x.x or 27.147.x.x)
+    # Common BD ISP ranges: 103.25.x.x, 27.147.x.x, 114.130.x.x
+    fake_ip = f"103.{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'X-Forwarded-For': fake_ip,
+        'X-Real-IP': fake_ip,
+        'CF-IPCountry': 'BD',
+        'Accept-Language': 'bn-BD,bn;q=0.9,en-US;q=0.8,en;q=0.7',
+        'X-Client-Country': 'BD',
+        'X-Country-Code': 'BD',
+        'X-Time-Zone': 'Asia/Dhaka',
+        'X-Locale': 'bn_BD'
+    }
+
+    # Check for actual Proxy URL (optional override)
     proxy_url = os.getenv("BD_PROXY_URL")
-    
     if proxy_url:
-        print(f"[SESSION] Using Proxy: {proxy_url}")
-        return Session(proxy=proxy_url)
+        print(f"[SESSION] Using Real Proxy: {proxy_url}")
+        return Session(proxy=proxy_url, headers=headers)
     
-    return Session()
+    # print(f"[SESSION] Using Fake BD IP: {fake_ip}")
+    return Session(headers=headers)
 
 def get_image_url(item):
     # Try 'image', then 'cover', then 'img'
