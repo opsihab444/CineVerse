@@ -20,6 +20,38 @@ import asyncio
 # Patch the host to match the working website
 moviebox_api.constants.HOST_URL = "https://moviebox.ph/"
 
+# --- MONKEY PATCH: Fix Pydantic Validation Errors for 'referer' ---
+try:
+    import moviebox_api.extractor.models.json as json_models
+    from pydantic import HttpUrl
+    from typing import Union, Optional
+
+    # Relax referer fields to allow empty strings/invalid URLs
+    # Patch MetadataModel
+    json_models.MetadataModel.__annotations__['referer'] = Union[HttpUrl, str, None]
+    json_models.MetadataModel.model_rebuild(force=True)
+
+    # Patch PubParamModel 
+    json_models.PubParamModel.__annotations__['referer'] = Union[HttpUrl, str, None]
+    json_models.PubParamModel.model_rebuild(force=True)
+
+    # Patch ResDataModel
+    json_models.ResDataModel.__annotations__['referer'] = Union[HttpUrl, str, None]
+    json_models.ResDataModel.model_rebuild(force=True)
+    
+    # Patch ItemJsonDetailsModel to reflect changes
+    json_models.ItemJsonDetailsModel.model_rebuild(force=True)
+    
+    print("✅ Successfully patched Pydantic models for empty referer.")
+except Exception as e:
+    print(f"❌ Failed to patch models: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Catch ValidationError in the routes and fallback
+from pydantic import ValidationError
+
+
 import uuid
 app = FastAPI(
     title="CineVerse API",
@@ -107,18 +139,18 @@ def set_cached(key, value):
 
 # --- HELPERS ---
 
-def get_session():
-    """Create a session with fake BD IP headers to bypass geo-restrictions."""
-    import random
-    
-    # Generate a random IP looking like a BD IP (e.g., 103.x.x.x or 27.147.x.x)
-    # Common BD ISP ranges: 103.25.x.x, 27.147.x.x, 114.130.x.x
-    fake_ip = f"103.{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}"
+def get_session(client_ip=None):
+    """
+    Create a session.
+    - For Localhost: Use natural connection (uses your PC's BD IP).
+    - For Render/Remote: Forward the real client's IP.
+    """
+    is_localhost = not client_ip or client_ip in ["127.0.0.1", "localhost", "::1"]
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'X-Forwarded-For': fake_ip,
-        'X-Real-IP': fake_ip,
+        'Origin': 'http://h5.aoneroom.com',
+        'Referer': 'http://h5.aoneroom.com/',
         'CF-IPCountry': 'BD',
         'Accept-Language': 'bn-BD,bn;q=0.9,en-US;q=0.8,en;q=0.7',
         'X-Client-Country': 'BD',
@@ -127,13 +159,18 @@ def get_session():
         'X-Locale': 'bn_BD'
     }
 
+    # Only forward IP if it's NOT localhost (Real User on Render)
+    if not is_localhost:
+        headers['X-Forwarded-For'] = client_ip
+        headers['X-Real-IP'] = client_ip
+    # else: Localhost -> No IP headers -> Uses your real PC IP (BD)
+
     # Check for actual Proxy URL (optional override)
     proxy_url = os.getenv("BD_PROXY_URL")
     if proxy_url:
         print(f"[SESSION] Using Real Proxy: {proxy_url}")
         return Session(proxy=proxy_url, headers=headers)
     
-    # print(f"[SESSION] Using Fake BD IP: {fake_ip}")
     return Session(headers=headers)
 
 def get_image_url(item):
@@ -218,8 +255,15 @@ async def health_check():
     return {"status": "ok", "message": "CineVerse is running! 🎬"}
 
 
+def get_client_ip(request: Request):
+    """Get the real client IP, handling proxies (Render/Cloudflare)."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host
+
 @app.get("/api/home", tags=["Discovery"], summary="Get Homepage Content")
-async def get_home_content(mode: str = "full"):
+async def get_home_content(request: Request, mode: str = "full"):
     """
     Fetch homepage content.
     Modes:
@@ -227,7 +271,9 @@ async def get_home_content(mode: str = "full"):
     - 'init': Get Banner + Top 2 Rows (Fast load)
     - 'more': Get the rest of the rows
     """
-    session = get_session()
+    client_ip = get_client_ip(request)
+    # print(f"[HOME] Request from: {client_ip}")
+    session = get_session(client_ip)
     try:
         # 1. Check Cache
         cache_key = "home_content_full"
@@ -384,7 +430,7 @@ def make_secure_url(token, title, quality="HD"):
     return f"/v/{token}/{safe_title}.{q_str}.mp4?token=exp={exp}&sig={sig}"
     
 @app.get("/api/details/{title:path}", tags=["Movies"], summary="Get Movie Details")
-async def get_details(title: str, include_stream: bool = True):
+async def get_details(request: Request, title: str, include_stream: bool = True):
     """
     Get detailed information about a movie by its title.
     
@@ -399,7 +445,8 @@ async def get_details(title: str, include_stream: bool = True):
         print(f"[DETAILS] Cache hit for: {title}")
         return cached
     
-    session = get_session()
+    client_ip = get_client_ip(request)
+    session = get_session(client_ip)
     movie = None
     
     try:
@@ -412,44 +459,50 @@ async def get_details(title: str, include_stream: bool = True):
         async def fetch_details():
             try:
                 md = MovieDetails(movie, session=session)
-                json_details = await md.get_json_details_extractor_model()
-                subject = json_details.subject
-                # Extract Directors and Cast
-                directors = []
-                cast = []
-                if json_details.stars:
-                    for s in json_details.stars:
-                        if s.character and 'Director' in s.character: # Heuristic
-                            directors.append(s.name)
-                        elif hasattr(s, 'staffType') and s.staffType == 2:
-                            directors.append(s.name)
-                        else:
-                            cast.append(s.name)
+                try:
+                    json_details = await md.get_json_details_extractor_model()
+                    
+                    # Normal processing
+                    subject = json_details.subject
+                    directors = []
+                    cast = []
+                    if json_details.stars:
+                        for s in json_details.stars:
+                            if s.character and 'Director' in s.character:
+                                directors.append(s.name)
+                            elif hasattr(s, 'staffType') and s.staffType == 2:
+                                directors.append(s.name)
+                            else:
+                                cast.append(s.name)
 
-                # Extract Trailer
-                trailer_url = None
-                trailer_img = None
-                if hasattr(subject, 'trailer') and subject.trailer:
-                    if subject.trailer.videoAddress:
-                        trailer_url = str(subject.trailer.videoAddress.url)
-                    if subject.trailer.cover:
-                        trailer_img = str(subject.trailer.cover.url)
+                    trailer_url = None
+                    trailer_img = None
+                    if hasattr(subject, 'trailer') and subject.trailer:
+                        if subject.trailer.videoAddress:
+                            trailer_url = str(subject.trailer.videoAddress.url)
+                        if subject.trailer.cover:
+                            trailer_img = str(subject.trailer.cover.url)
 
-                return {
-                    "title": subject.title,
-                    "description": subject.description,
-                    "year": str(subject.releaseDate) if subject.releaseDate else 'N/A',
-                    "rating": getattr(subject, 'imdbRatingValue', 'N/A'),
-                    "image": get_image_url(subject),
-                    "actors": cast,
-                    "directors": directors,
-                    "genre": subject.genre if subject.genre else [],
-                    "duration": format_duration(getattr(subject, 'duration', 0)),
-                    "country": getattr(subject, 'countryName', 'N/A'),
-                    "trailerUrl": trailer_url,
-                    "trailerImage": trailer_img,
-                    "id": get_id(movie)
-                }
+                    return {
+                        "title": subject.title,
+                        "description": subject.description,
+                        "year": str(subject.releaseDate) if subject.releaseDate else 'N/A',
+                        "rating": getattr(subject, 'imdbRatingValue', 'N/A'),
+                        "image": get_image_url(subject),
+                        "actors": cast,
+                        "directors": directors,
+                        "genre": subject.genre if subject.genre else [],
+                        "duration": format_duration(getattr(subject, 'duration', 0)),
+                        "country": getattr(subject, 'countryName', 'N/A'),
+                        "trailerUrl": trailer_url,
+                        "trailerImage": trailer_img,
+                        "id": get_id(movie)
+                    }
+                except (ValidationError, Exception) as ve:
+                    print(f"[DETAILS] Validation Error in MovieDetails: {ve}")
+                    # Fallback to search result data
+                    raise Exception("Validation failed, fallback to basics")
+
             except Exception as e:
                 print(f"[DETAILS] MovieDetails failed, using search result: {e}")
                 return {
@@ -557,7 +610,7 @@ async def get_details(title: str, include_stream: bool = True):
 
 
 @app.get("/api/tv_details/{title:path}", tags=["TV Series"], summary="Get TV Series Details")
-async def get_tv_details(title: str):
+async def get_tv_details(request: Request, title: str):
     """
     Get details for a TV series, including all seasons and episodes.
     """
@@ -569,7 +622,8 @@ async def get_tv_details(title: str):
         print(f"[TV] Cache hit for: {title}")
         return cached
     
-    session = get_session()
+    client_ip = get_client_ip(request)
+    session = get_session(client_ip)
     
     try:
         # Search for the content - try different variations
@@ -742,11 +796,12 @@ async def get_tv_details(title: str):
         if hasattr(session, 'aclose'): await session.aclose()
 
 @app.get("/api/stream_url/{title:path}", tags=["Movies"], summary="Get Movie Stream")
-async def get_stream_url(title: str, quality: str = "720P"):
+async def get_stream_url(request: Request, title: str, quality: str = "720P"):
     """
     Resolve a secure streaming URL for a specific movie.
     """
-    session = get_session()
+    client_ip = get_client_ip(request)
+    session = get_session(client_ip)
     try:
         print(f"[STREAM] Searching for stream: {title}")
         
@@ -847,11 +902,12 @@ async def get_stream_url(title: str, quality: str = "720P"):
         if hasattr(session, 'aclose'): await session.aclose()
 
 @app.get("/api/tv_stream_url/{title:path}/{season}/{episode}", tags=["TV Series"], summary="Get TV Series Stream")
-async def get_tv_stream_url(title: str, season: int, episode: int, quality: str = "720P"):
+async def get_tv_stream_url(request: Request, title: str, season: int, episode: int, quality: str = "720P"):
     """
     Resolve a secure streaming URL for a specific TV episode.
     """
-    session = get_session()
+    client_ip = get_client_ip(request)
+    session = get_session(client_ip)
     try:
         print(f"[TV STREAM] Searching for: {title} S{season}E{episode}")
         
@@ -968,14 +1024,15 @@ async def search_page(request: Request, q: str = ""):
     return templates.TemplateResponse("search.html", {"request": request, "query": q})
 
 @app.get("/api/search", tags=["Discovery"], summary="Search Content", description="Search for Movies and TV Series by keyword.")
-async def api_search(q: str):
+async def api_search(request: Request, q: str):
     """
     Search for Movies and TV Series by keyword.
     """
     if not q:
         return {"results": []}
     
-    session = get_session()
+    client_ip = get_client_ip(request)
+    session = get_session(client_ip)
     try:
         # Use the Search class from moviebox_api
         s = Search(session=session, query=q)
