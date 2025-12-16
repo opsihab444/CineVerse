@@ -79,7 +79,6 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 proxy_client = httpx.AsyncClient(
     timeout=httpx.Timeout(60.0, connect=10.0),
     limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
-    http2=True, # Attempt HTTP/2 for speed
     follow_redirects=True
 )
 
