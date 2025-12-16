@@ -78,8 +78,12 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 # Optimized for streaming high-throughput video
 proxy_client = httpx.AsyncClient(
     timeout=httpx.Timeout(60.0, connect=10.0),
-    limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)
+    limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    http2=True, # Attempt HTTP/2 for speed
+    follow_redirects=True
 )
+
+
 
 # --- KEEP ALIVE (Prevent Render Free Tier Sleep) ---
 SELF_PING_INTERVAL = 300  # 5 minutes in seconds
@@ -1119,6 +1123,7 @@ async def stream_engine(url: str, request: Request):
         response_headers = {
             "Accept-Ranges": "bytes",
             "Content-Type": response.headers.get("Content-Type", "video/mp4"),
+            "Cache-Control": "public, max-age=3600", # Enable browser caching
         }
         if "Content-Length" in response.headers:
              response_headers["Content-Length"] = response.headers["Content-Length"]
@@ -1127,8 +1132,8 @@ async def stream_engine(url: str, request: Request):
         
         async def stream_video():
             try:
-                # Optimized chunk size: 1MB (Better for high latency links like Render)
-                async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
+                # Optimized chunk size: 64KB (Faster Start, Smoother Flow)
+                async for chunk in response.aiter_bytes(chunk_size=64 * 1024):
                     yield chunk
             except Exception as stream_err:
                 print(f"[STREAM ERROR] {stream_err}")
