@@ -107,6 +107,17 @@ def set_cached(key, value):
 
 # --- HELPERS ---
 
+def get_session():
+    """Create a session, optionally using a proxy if configured."""
+    # Check for BD_PROXY_URL in environment variables
+    proxy_url = os.getenv("BD_PROXY_URL")
+    
+    if proxy_url:
+        print(f"[SESSION] Using Proxy: {proxy_url}")
+        return Session(proxy=proxy_url)
+    
+    return Session()
+
 def get_image_url(item):
     # Try 'image', then 'cover', then 'img'
     img_obj = getattr(item, 'image', getattr(item, 'cover', getattr(item, 'img', None)))
@@ -198,7 +209,7 @@ async def get_home_content(mode: str = "full"):
     - 'init': Get Banner + Top 2 Rows (Fast load)
     - 'more': Get the rest of the rows
     """
-    session = Session()
+    session = get_session()
     try:
         # 1. Check Cache
         cache_key = "home_content_full"
@@ -370,7 +381,7 @@ async def get_details(title: str, include_stream: bool = True):
         print(f"[DETAILS] Cache hit for: {title}")
         return cached
     
-    session = Session()
+    session = get_session()
     movie = None
     
     try:
@@ -540,7 +551,7 @@ async def get_tv_details(title: str):
         print(f"[TV] Cache hit for: {title}")
         return cached
     
-    session = Session()
+    session = get_session()
     
     try:
         # Search for the content - try different variations
@@ -717,7 +728,7 @@ async def get_stream_url(title: str, quality: str = "720P"):
     """
     Resolve a secure streaming URL for a specific movie.
     """
-    session = Session()
+    session = get_session()
     try:
         print(f"[STREAM] Searching for stream: {title}")
         
@@ -822,7 +833,7 @@ async def get_tv_stream_url(title: str, season: int, episode: int, quality: str 
     """
     Resolve a secure streaming URL for a specific TV episode.
     """
-    session = Session()
+    session = get_session()
     try:
         print(f"[TV STREAM] Searching for: {title} S{season}E{episode}")
         
@@ -946,7 +957,7 @@ async def api_search(q: str):
     if not q:
         return {"results": []}
     
-    session = Session()
+    session = get_session()
     try:
         # Use the Search class from moviebox_api
         s = Search(session=session, query=q)
