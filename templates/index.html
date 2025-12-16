@@ -2879,6 +2879,49 @@
         setTimeout(() => { isPlayerOpening = false; }, 2000);
     }
 
+    async function playEpisode(episodeNum) {
+        if (isPlayerOpening) return;
+        if (!currentTVData) return;
+        isPlayerOpening = true;
+
+        const seasonNum = currentSeason || 1;
+        const title = currentTVData.title;
+        const epTitle = `${title} S${seasonNum}E${episodeNum}`;
+
+        // Show global spinner to indicate activity
+        const spinner = document.getElementById('bufferingSpinner');
+        if (spinner) spinner.classList.remove('hidden');
+
+        // Fetch Stream URL first
+        let url = `/api/tv_stream_url/${encodeURIComponent(title)}/${seasonNum}/${episodeNum}`;
+        if (currentTVData.subjectId && currentTVData.detailPath) {
+            url += `?id=${currentTVData.subjectId}&slug=${encodeURIComponent(currentTVData.detailPath)}`;
+        }
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (spinner) spinner.classList.add('hidden');
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            if (data.url) {
+                // Now open player with valid URL
+                openPlayer(epTitle, data.url, data.qualities || []);
+            }
+        } catch (e) {
+            console.error("Error playing episode:", e);
+            if (spinner) spinner.classList.add('hidden');
+            alert("Failed to play episode.");
+        } finally {
+            isPlayerOpening = false;
+        }
+    }
+
     // Updated openItemFromSearch to fetch fresh details including qualities
     async function openMovieModal(title, image, id = null, slug = null) {
         const modal = document.getElementById('movieModal');
@@ -3206,37 +3249,7 @@
         }
     }
 
-    async function playEpisode(episodeNumber) {
-        if (!currentTVData) return;
-        if (isPlayerOpening) return;
-        isPlayerOpening = true;
 
-        // Track that we came from a modal
-        wasModalOpenBeforePlayer = true;
-
-        // Hide modal (don't close it, just hide visually)
-        document.getElementById('movieModal').classList.remove('active');
-
-        // Show loading initially
-        setupPlayerUI(`${currentTVData.title} S${currentSeason}:E${episodeNumber}`);
-
-        try {
-            const response = await fetch(`/api/tv_stream_url/${encodeURIComponent(currentTVData.title)}/${currentSeason}/${episodeNumber}`);
-            const data = await response.json();
-
-            if (data.error) { alert(data.error); closePlayer(); return; }
-
-            // data.url is now a local /stream/{token} path, use directly
-            // Pass true to skip branding since we already started it
-            openPlayer(data.title, data.url, data.qualities, true);
-
-        } catch (e) {
-            console.error(e);
-            closePlayer();
-        } finally {
-            isPlayerOpening = false;
-        }
-    }
 
     let currentQualities = [];
     let currentQualityUrl = "";
